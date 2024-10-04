@@ -22,7 +22,7 @@ AequitasIQ is an intelligent financial analysis tool that creates an interactive
 - Panel
 - Langchain Community
 - Pydantic
-- Ollama (with the llama3.1 model)
+- Ollama (with the llama3.1 8B model or 3.2 3B for less RAM and GPU usage)
 
 ## Installation
 
