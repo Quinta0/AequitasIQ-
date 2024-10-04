@@ -28,8 +28,8 @@ AequitasIQ is an intelligent financial analysis tool that creates an interactive
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/aequitasiq.git
-   cd aequitasiq
+   git clone https://github.com/Quinta0/AequitasIQ-.git
+   cd AequitasIQ-
    ```
 
 2. Create a virtual environment (optional but recommended):
@@ -60,7 +60,7 @@ AequitasIQ is an intelligent financial analysis tool that creates an interactive
 
 3. Run the script:
    ```
-   python aequitasiq.py
+   python finance_dashboard.py
    ```
 
 4. The AequitasIQ dashboard will open in your default web browser, providing balanced insights into your finances
