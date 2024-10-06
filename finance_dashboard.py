@@ -151,61 +151,18 @@ def create_transaction_form():
     return form
 
 
-def update_dashboard(event=None):
-    global llm, df, income_chart_current, expense_chart_current, income_chart_next, expense_chart_next
-    global income_monthly_current, expense_monthly_current, income_monthly_next, expense_monthly_next
+def update_dashboard(year, view_type):
+    global df, income_chart, expense_chart, income_monthly, expense_monthly
 
-    # Re-read the CSV file and update all charts
-    df = pd.read_csv('transactions.csv')
-    df['Date'] = df['Date'].apply(parse_date)
-    df['Year'] = df['Date'].dt.year
-    df['Month'] = df['Date'].dt.month
-    df['Month Name'] = df['Date'].dt.strftime("%b")
-
-    # Filter for 2024 onwards
-    df = df[df['Year'] >= 2024]
-
-    current_year = datetime.now().year
-    next_year = current_year + 1
-
-    # Recategorize transactions
-    categories_df_all = pd.DataFrame()
-    unique_transactions = df["Name / Description"].unique()
-    batch_size = 5  # Reduced batch size
-    for i in range(0, len(unique_transactions), batch_size):
-        batch = unique_transactions[i:i + batch_size]
-        transaction_names = ', '.join(batch)
-
-        categories_df = categorize_transactions(transaction_names, llm)
-        if not categories_df.empty:
-            categories_df_all = pd.concat([categories_df_all, categories_df], ignore_index=True)
-
-    # Clean and standardize categories
-    categories_df_all = clean_categories(categories_df_all)
-
-    # Remove numbering from Transaction column
-    categories_df_all['Transaction'] = categories_df_all['Transaction'].apply(lambda x: re.sub(r'^\d+\.\s*', '', x))
-
-    # Merge categorized data
-    df = pd.merge(df, categories_df_all[['Transaction', 'Category']],
-                  left_on='Name / Description', right_on='Transaction', how='left')
-    df.loc[df['Expense/Income'] == 'Income', 'Category'] = df.loc[
-        df['Expense/Income'] == 'Income', 'Name / Description']
-
-    # Update charts
-    income_chart_current.object = make_chart(df, current_year, 'Income')
-    expense_chart_current.object = make_chart(df, current_year, 'Expense')
-    income_chart_next.object = make_chart(df, next_year, 'Income')
-    expense_chart_next.object = make_chart(df, next_year, 'Expense')
-
-    income_monthly_current.object = make_monthly_bar_chart(df, current_year, 'Income')
-    expense_monthly_current.object = make_monthly_bar_chart(df, current_year, 'Expense')
-    income_monthly_next.object = make_monthly_bar_chart(df, next_year, 'Income')
-    expense_monthly_next.object = make_monthly_bar_chart(df, next_year, 'Expense')
+    if view_type == 'Yearly':
+        income_chart.object = make_chart(df, year, 'Income')
+        expense_chart.object = make_chart(df, year, 'Expense')
+    else:  # Monthly view
+        income_monthly.object = make_monthly_bar_chart(df, year, 'Income')
+        expense_monthly.object = make_monthly_bar_chart(df, year, 'Expense')
 
     # Trigger an event to update the UI
-    for chart in [income_chart_current, expense_chart_current, income_chart_next, expense_chart_next,
-                  income_monthly_current, expense_monthly_current, income_monthly_next, expense_monthly_next]:
+    for chart in [income_chart, expense_chart, income_monthly, expense_monthly]:
         if hasattr(chart, 'param'):
             chart.param.trigger('object')
 
@@ -217,17 +174,13 @@ def make_chart(df, year, label):
     total_income = df[(df['Expense/Income'] == 'Income') & (df['Year'] == year)]['Amount (CHF)'].sum()
 
     if label == 'Expense':
-        # Aggregate the data by Category
         sub_df = sub_df.groupby('Category')['Amount (CHF)'].sum().reset_index()
-
-        # Create Treemap for expenses
         fig = px.treemap(sub_df, path=['Category'], values='Amount (CHF)',
                          color='Amount (CHF)', color_continuous_scale='Reds')
         total_text = f"Total Expenses: CHF {round(total_expense)}"
         saving_rate = round((total_income - total_expense) / total_income * 100) if total_income != 0 else 0
         saving_rate_text = f"Saving rate: {saving_rate}%"
     else:
-        # Create Pie chart for income
         color_scale = px.colors.qualitative.Pastel
         fig = px.pie(sub_df, values='Amount (CHF)', names='Category', color_discrete_sequence=color_scale)
         fig.update_traces(textposition='inside', direction='clockwise', hole=0.3, textinfo="label+percent")
@@ -242,9 +195,9 @@ def make_chart(df, year, label):
             dict(text=total_text, x=0.5, y=-0.1, font_size=12, showarrow=False, xref='paper', yref='paper'),
             dict(text=saving_rate_text, x=0.5, y=-0.15, font_size=12, showarrow=False, xref='paper', yref='paper')
         ],
-        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
-        plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area
-        autosize=True,  # Make the chart responsive
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        autosize=True,
         font=dict(color="#FFFFFF"),
     )
     return fig
@@ -261,12 +214,12 @@ def make_monthly_bar_chart(df, year, label):
     color_scale = px.colors.sequential.Greens if label == "Income" else px.colors.sequential.Reds
 
     bar_fig = px.bar(total_by_month, x='Month Name', y='Amount (CHF)', text_auto='.2s',
-                     title=f"{label} per month", color='Amount (CHF)', color_continuous_scale=color_scale)
+                     title=f"{label} per month in {year}", color='Amount (CHF)', color_continuous_scale=color_scale)
 
     bar_fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
-        plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area
-        autosize=True,  # Make the chart responsive
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        autosize=True,
         font=dict(color="#FFFFFF"),
     )
 
@@ -274,34 +227,22 @@ def make_monthly_bar_chart(df, year, label):
 
 
 def main():
-    global llm, income_chart_current, expense_chart_current, income_chart_next, expense_chart_next
-    global income_monthly_current, expense_monthly_current, income_monthly_next, expense_monthly_next
-
+    global llm, df
 
     # Initialize Ollama
     llm = Ollama(model="llama3.2")
 
     # Read and process data
     df = pd.read_csv('transactions.csv')
-
-    # Apply the custom date parser
     df['Date'] = df['Date'].apply(parse_date)
-
     df['Year'] = df['Date'].dt.year
     df['Month'] = df['Date'].dt.month
     df['Month Name'] = df['Date'].dt.strftime("%b")
 
-    # Filter for 2024 onwards
-    df = df[df['Year'] >= 2024]
-
-    # Get the current year and the next year
-    current_year = datetime.now().year
-    next_year = current_year + 1
-
     # Categorize transactions
     categories_df_all = pd.DataFrame()
     unique_transactions = df["Name / Description"].unique()
-    batch_size = 5  # Reduced batch size
+    batch_size = 5
     for i in range(0, len(unique_transactions), batch_size):
         batch = unique_transactions[i:i + batch_size]
         transaction_names = ', '.join(batch)
@@ -320,48 +261,50 @@ def main():
 
     if categories_df_all.empty:
         print("Warning: Failed to categorize any transactions. Using default categories.")
-        categories_df_all = pd.DataFrame({'Transaction': unique_transactions, 'Category': ['Uncategorized'] * len(unique_transactions)})
+        categories_df_all = pd.DataFrame(
+            {'Transaction': unique_transactions, 'Category': ['Uncategorized'] * len(unique_transactions)})
 
     # Clean and standardize categories
     categories_df_all = clean_categories(categories_df_all)
-
-    # Remove numbering from Transaction column
     categories_df_all['Transaction'] = categories_df_all['Transaction'].apply(lambda x: re.sub(r'^\d+\.\s*', '', x))
 
     # Merge categorized data
     df = pd.merge(df, categories_df_all[['Transaction', 'Category']],
                   left_on='Name / Description', right_on='Transaction', how='left')
-
-    # For Income rows, use Name / Description as Category
     df.loc[df['Expense/Income'] == 'Income', 'Category'] = df.loc[
         df['Expense/Income'] == 'Income', 'Name / Description']
 
-    # Create charts
-    income_chart_current = make_chart(df, current_year, 'Income')
-    expense_chart_current = make_chart(df, current_year, 'Expense')
-    income_chart_next = make_chart(df, next_year, 'Income')
-    expense_chart_next = make_chart(df, next_year, 'Expense')
+    # Get available years
+    available_years = sorted(df['Year'].unique())
 
-    income_monthly_current = make_monthly_bar_chart(df, current_year, 'Income')
-    expense_monthly_current = make_monthly_bar_chart(df, current_year, 'Expense')
-    income_monthly_next = make_monthly_bar_chart(df, next_year, 'Income')
-    expense_monthly_next = make_monthly_bar_chart(df, next_year, 'Expense')
+    # Create year selector and view type selector
+    year_selector = pn.widgets.Select(name='Select Year', options=available_years, value=max(available_years))
+    view_type_selector = pn.widgets.RadioButtonGroup(name='View Type', options=['Yearly', 'Monthly'], value='Yearly')
 
-    # Create dashboard
-    tabs = pn.Tabs(
-        (str(current_year), pn.Column(
-            pn.Row(pn.pane.Plotly(income_chart_current, min_height=400, sizing_mode='stretch_both'),
-                   pn.pane.Plotly(expense_chart_current, min_height=400, sizing_mode='stretch_both')),
-            pn.Row(pn.pane.Plotly(income_monthly_current, min_height=400, sizing_mode='stretch_both'),
-                   pn.pane.Plotly(expense_monthly_current, min_height=400, sizing_mode='stretch_both'))
-        )),
-        (str(next_year), pn.Column(
-            pn.Row(pn.pane.Plotly(income_chart_next, min_height=400, sizing_mode='stretch_both'),
-                   pn.pane.Plotly(expense_chart_next, min_height=400, sizing_mode='stretch_both')),
-            pn.Row(pn.pane.Plotly(income_monthly_next, min_height=400, sizing_mode='stretch_both'),
-                   pn.pane.Plotly(expense_monthly_next, min_height=400, sizing_mode='stretch_both'))
-        ))
-    )
+    # Create charts pane
+    income_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_both')
+    expense_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_both')
+    charts_row = pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_both')
+
+    def update_charts(event):
+        year = year_selector.value
+        view_type = view_type_selector.value
+
+        if view_type == 'Yearly':
+            income_chart = make_chart(df, year, 'Income')
+            expense_chart = make_chart(df, year, 'Expense')
+        else:  # Monthly view
+            income_chart = make_monthly_bar_chart(df, year, 'Income')
+            expense_chart = make_monthly_bar_chart(df, year, 'Expense')
+
+        income_chart_pane.object = income_chart
+        expense_chart_pane.object = expense_chart
+
+    year_selector.param.watch(update_charts, 'value')
+    view_type_selector.param.watch(update_charts, 'value')
+
+    # Initial update of charts
+    update_charts(None)
 
     transaction_form = create_transaction_form()
 
@@ -371,20 +314,20 @@ def main():
             pn.pane.Markdown("# Income Expense analysis"),
             pn.pane.Markdown(
                 "Overview of income and expense based on my bank transactions. Categories are obtained using local LLMs."),
-            pn.pane.PNG("picture.png", sizing_mode="scale_both"),
-            transaction_form  # Add the transaction form to the sidebar
+            year_selector,
+            view_type_selector,
+            transaction_form
         ],
-        main=[pn.Row(pn.Column(tabs, sizing_mode='stretch_both'))],
-        header_background="#4a4a4a",  # Darker header background
-        accent_base_color="#008080",  # Teal accent color
-        theme='dark',  # Dark theme for better contrast
+        main=[charts_row],
+        header_background="#4a4a4a",
+        accent_base_color="#008080",
+        theme='dark',
     )
 
     # Add debug information
     debug_info = pn.pane.Markdown(f"""
     ## Debug Information
-    - Current Year: {current_year}
-    - Next Year: {next_year}
+    - Available Years: {', '.join(map(str, available_years))}
     - Number of Transactions: {len(df)}
     - Number of Categories: {len(df['Category'].unique())}
     """)
@@ -392,6 +335,7 @@ def main():
     template.main.append(debug_info)
 
     return template
+
 
 if __name__ == "__main__":
     dashboard = main()
