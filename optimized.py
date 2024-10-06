@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import pandas as pd
@@ -8,39 +8,28 @@ import plotly.express as px
 from langchain_community.llms import Ollama
 from pydantic import BaseModel, field_validator
 
-
 class ResponseChecks(BaseModel):
     data: List[str]
 
     @field_validator("data")
     def check(cls, value):
-        valid_items = []
-        for item in value:
-            if " - " in item:
-                parts = item.split(" - ")
-                if len(parts) == 2 and len(parts[1].strip()) > 0 and len(parts[1].split()) <= 4:
-                    valid_items.append(item)
+        valid_items = [item for item in value if " - " in item and len(item.split(" - ")[1].strip().split()) <= 4]
         if not valid_items:
             raise ValueError("No valid categorizations found in the response")
         return valid_items
-
 
 def parse_date(date_string):
     try:
         return pd.to_datetime(date_string, format='%Y-%m-%d')
     except ValueError:
-        # If the date is invalid, try to correct it
         year, month, day = map(int, date_string.split('-'))
         if month > 12:
-            month, day = day, month  # Swap month and day
-        last_day_of_month = (datetime(year, month % 12 + 1, 1) - timedelta(days=1)).day
-        day = min(day, last_day_of_month)
-        return datetime(year, month, day)
-
+            month, day = day, month
+        return pd.to_datetime(f"{year}-{month:02d}-{day:02d}")
 
 def categorize_transactions(transaction_names, llm):
     prompt = (
-        "You're an expert accountant for a family"
+        "You're an expert accountant for a family. "
         "Categorize the following expenses. Respond with a list, one item per line. "
         "Format: 'Transaction - Category'. Categories should be 1-4 words. "
         "Do not include any explanatory text before or after the list. Example:\n"
@@ -51,18 +40,14 @@ def categorize_transactions(transaction_names, llm):
     response = llm.invoke(prompt)
     response_lines = [line.strip() for line in response.split('\n') if line.strip()]
 
-    # Validate response
     try:
         valid_items = ResponseChecks(data=response_lines).data
     except ValueError as e:
         print(f"Validation error: {e}")
         return pd.DataFrame({'Transaction': transaction_names.split(', '), 'Category': ['Uncategorized'] * len(transaction_names.split(', '))})
 
-    # Create DataFrame
-    categories_df = pd.DataFrame(valid_items, columns=['Transaction vs category'])
-    categories_df[['Transaction', 'Category']] = categories_df['Transaction vs category'].str.split(' - ', expand=True)
+    categories_df = pd.DataFrame([item.split(' - ') for item in valid_items], columns=['Transaction', 'Category'])
     return categories_df
-
 
 def clean_categories(df):
     if 'Category' not in df.columns:
@@ -133,7 +118,6 @@ def clean_categories(df):
 
     return df
 
-
 def add_transaction_to_csv(date, description, amount, expense_income):
     new_transaction = pd.DataFrame({
         'Date': [date],
@@ -145,7 +129,6 @@ def add_transaction_to_csv(date, description, amount, expense_income):
     df = pd.read_csv('transactions.csv')
     df = pd.concat([df, new_transaction], ignore_index=True)
     df.to_csv('transactions.csv', index=False)
-
 
 def create_transaction_form():
     date_input = pn.widgets.DatePicker(name='Date', value=datetime.now().date())
@@ -159,36 +142,19 @@ def create_transaction_form():
         amount = amount_input.value
         expense_income = expense_income_input.value
 
-        if date and description and amount and expense_income:
+        if all([date, description, amount, expense_income]):
             add_transaction_to_csv(date, description, amount, expense_income)
-
-            # Try to show a notification, but don't fail if it's not available
-            try:
-                if pn.state.notifications:
-                    pn.state.notifications.success('Transaction added successfully!')
-                else:
-                    print('Transaction added successfully!')
-            except Exception as e:
-                print(f'Transaction added successfully! (Notification error: {e})')
-
-            # Clear form inputs
+            pn.state.notifications.success('Transaction added successfully!')
             description_input.value = ''
             amount_input.value = None
-            # Trigger dashboard update
             update_dashboard()
         else:
-            try:
-                if pn.state.notifications:
-                    pn.state.notifications.error('Please fill in all fields.')
-                else:
-                    print('Please fill in all fields.')
-            except Exception as e:
-                print(f'Please fill in all fields. (Notification error: {e})')
+            pn.state.notifications.error('Please fill in all fields.')
 
     submit_button = pn.widgets.Button(name='Add Transaction', button_type='primary')
     submit_button.on_click(add_transaction)
 
-    form = pn.Column(
+    return pn.Column(
         pn.pane.Markdown("## Add New Transaction"),
         date_input,
         description_input,
@@ -197,28 +163,8 @@ def create_transaction_form():
         submit_button
     )
 
-    return form
-
-
-def update_dashboard(year, view_type):
-    global df, income_chart, expense_chart, income_monthly, expense_monthly
-
-    if view_type == 'Yearly':
-        income_chart.object = make_chart(df, year, 'Income')
-        expense_chart.object = make_chart(df, year, 'Expense')
-    else:  # Monthly view
-        income_monthly.object = make_monthly_bar_chart(df, year, 'Income')
-        expense_monthly.object = make_monthly_bar_chart(df, year, 'Expense')
-
-    # Trigger an event to update the UI
-    for chart in [income_chart, expense_chart, income_monthly, expense_monthly]:
-        if hasattr(chart, 'param'):
-            chart.param.trigger('object')
-
-
 def make_chart(df, year, label):
     sub_df = df[(df['Expense/Income'] == label) & (df['Year'] == year)]
-
     total_expense = df[(df['Expense/Income'] == 'Expense') & (df['Year'] == year)]['Amount (CHF)'].sum()
     total_income = df[(df['Expense/Income'] == 'Income') & (df['Year'] == year)]['Amount (CHF)'].sum()
 
@@ -230,8 +176,7 @@ def make_chart(df, year, label):
         saving_rate = round((total_income - total_expense) / total_income * 100) if total_income != 0 else 0
         saving_rate_text = f"Saving rate: {saving_rate}%"
     else:
-        color_scale = px.colors.qualitative.Pastel
-        fig = px.pie(sub_df, values='Amount (CHF)', names='Category', color_discrete_sequence=color_scale)
+        fig = px.pie(sub_df, values='Amount (CHF)', names='Category', color_discrete_sequence=px.colors.qualitative.Pastel)
         fig.update_traces(textposition='inside', direction='clockwise', hole=0.3, textinfo="label+percent")
         total_text = f"Total Income: CHF {round(total_income)}"
         saving_rate_text = ""
@@ -251,44 +196,35 @@ def make_chart(df, year, label):
     )
     return fig
 
-
 def make_monthly_bar_chart(df, year, label):
     df = df[(df['Expense/Income'] == label) & (df['Year'] == year)]
     total_by_month = (df.groupby(['Month', 'Month Name'])['Amount (CHF)'].sum()
-                      .to_frame()
                       .reset_index()
-                      .sort_values(by='Month')
-                      .reset_index(drop=True))
+                      .sort_values(by='Month'))
 
     color_scale = px.colors.sequential.Greens if label == "Income" else px.colors.sequential.Reds
 
-    bar_fig = px.bar(total_by_month, x='Month Name', y='Amount (CHF)', text_auto='.2s',
-                     title=f"{label} per month in {year}", color='Amount (CHF)', color_continuous_scale=color_scale)
+    fig = px.bar(total_by_month, x='Month Name', y='Amount (CHF)', text_auto='.2s',
+                 title=f"{label} per month in {year}", color='Amount (CHF)', color_continuous_scale=color_scale)
 
-    bar_fig.update_layout(
+    fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         autosize=True,
         font=dict(color="#FFFFFF"),
     )
 
-    return bar_fig
-
+    return fig
 
 def main():
-    global llm, df
-
-    # Initialize Ollama
     llm = Ollama(model="llama3.2")
 
-    # Read and process data
     df = pd.read_csv('transactions.csv')
     df['Date'] = df['Date'].apply(parse_date)
     df['Year'] = df['Date'].dt.year
     df['Month'] = df['Date'].dt.month
     df['Month Name'] = df['Date'].dt.strftime("%b")
 
-    # Categorize transactions
     categories_df_all = pd.DataFrame()
     unique_transactions = df["Name / Description"].unique()
     batch_size = 5
@@ -296,8 +232,7 @@ def main():
         batch = unique_transactions[i:i + batch_size]
         transaction_names = ', '.join(batch)
 
-        max_retries = 3
-        for attempt in range(max_retries):
+        for attempt in range(3):
             try:
                 categories_df = categorize_transactions(transaction_names, llm)
                 if not categories_df.empty:
@@ -305,54 +240,72 @@ def main():
                     break
             except Exception as e:
                 print(f"Error on attempt {attempt + 1}: {e}")
-                if attempt == max_retries - 1:
-                    print(f"Failed to categorize batch starting with {batch[0]} after {max_retries} attempts.")
+        else:
+            print(f"Failed to categorize batch starting with {batch[0]} after 3 attempts.")
 
     if categories_df_all.empty:
         print("Warning: Failed to categorize any transactions. Using default categories.")
         categories_df_all = pd.DataFrame(
             {'Transaction': unique_transactions, 'Category': ['Uncategorized'] * len(unique_transactions)})
 
-    # Clean and standardize categories
     categories_df_all = clean_categories(categories_df_all)
     categories_df_all['Transaction'] = categories_df_all['Transaction'].apply(lambda x: re.sub(r'^\d+\.\s*', '', x))
 
-    # Merge categorized data
     df = pd.merge(df, categories_df_all[['Transaction', 'Category']],
                   left_on='Name / Description', right_on='Transaction', how='left')
     df.loc[df['Expense/Income'] == 'Income', 'Category'] = df.loc[
         df['Expense/Income'] == 'Income', 'Name / Description']
 
-    # Get available years
     available_years = sorted(df['Year'].unique())
+    available_months = sorted(df['Month'].unique())
 
-    # Create year selector and view type selector
     year_selector = pn.widgets.Select(name='Select Year', options=available_years, value=max(available_years))
+    month_selector = pn.widgets.Select(name='Select Month', options=available_months, value=max(available_months))
     view_type_selector = pn.widgets.RadioButtonGroup(name='View Type', options=['Yearly', 'Monthly'], value='Yearly')
 
-    # Create charts pane
-    income_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_both')
-    expense_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_both')
-    charts_row = pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_both')
+    income_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_width')
+    expense_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_width')
+    charts_row = pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_width')
+
+    debug_info = pn.pane.Markdown("")
 
     def update_charts(event):
         year = year_selector.value
+        month = month_selector.value
         view_type = view_type_selector.value
 
         if view_type == 'Yearly':
             income_chart = make_chart(df, year, 'Income')
             expense_chart = make_chart(df, year, 'Expense')
-        else:  # Monthly view
-            income_chart = make_monthly_bar_chart(df, year, 'Income')
-            expense_chart = make_monthly_bar_chart(df, year, 'Expense')
+        else:
+            income_chart = make_monthly_bar_chart(df[df['Month'] == month], year, 'Income')
+            expense_chart = make_monthly_bar_chart(df[df['Month'] == month], year, 'Expense')
 
         income_chart_pane.object = income_chart
         expense_chart_pane.object = expense_chart
 
+        # Update debug information
+        total_income = df[(df['Expense/Income'] == 'Income') & (df['Year'] == year)]['Amount (CHF)'].sum()
+        total_expense = df[(df['Expense/Income'] == 'Expense') & (df['Year'] == year)]['Amount (CHF)'].sum()
+        saving_rate = round((total_income - total_expense) / total_income * 100, 2) if total_income != 0 else 0
+
+        debug_info.object = f"""
+        ## Debug Information
+        - Available Years: {', '.join(map(str, available_years))}
+        - Number of Transactions: {len(df)}
+        - Number of Categories: {len(df['Category'].unique())}
+        - Overall Income: CHF {round(total_income, 2)}
+        - Overall Expenses: CHF {round(total_expense, 2)}
+        - Saving Rate: {saving_rate}%
+        - Selected Year: {year}
+        - Selected Month: {month if view_type == 'Monthly' else 'N/A'}
+        - View Type: {view_type}
+        """
+
     year_selector.param.watch(update_charts, 'value')
+    month_selector.param.watch(update_charts, 'value')
     view_type_selector.param.watch(update_charts, 'value')
 
-    # Initial update of charts
     update_charts(None)
 
     transaction_form = create_transaction_form()
@@ -361,27 +314,17 @@ def main():
         title='Personal Finance Dashboard',
         sidebar=[
             pn.pane.Markdown("# Income Expense analysis"),
-            pn.pane.Markdown(
-                "Overview of income and expense based on my bank transactions. Categories are obtained using local LLMs."),
+            pn.pane.Markdown("Overview of income and expense based on my bank transactions. Categories are obtained using local LLMs."),
             year_selector,
+            month_selector,
             view_type_selector,
             transaction_form
         ],
-        main=[charts_row],
+        main=[charts_row, debug_info],
         header_background="#4a4a4a",
         accent_base_color="#008080",
         theme='dark',
     )
-
-    # Add debug information
-    debug_info = pn.pane.Markdown(f"""
-    ## Debug Information
-    - Available Years: {', '.join(map(str, available_years))}
-    - Number of Transactions: {len(df)}
-    - Number of Categories: {len(df['Category'].unique())}
-    """)
-
-    template.main.append(debug_info)
 
     return template
 
