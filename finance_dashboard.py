@@ -5,6 +5,7 @@ from typing import List
 import pandas as pd
 import panel as pn
 import plotly.express as px
+import plotly.graph_objects as go
 from langchain_community.llms import Ollama
 from pydantic import BaseModel, field_validator
 
@@ -275,6 +276,70 @@ def make_monthly_bar_chart(df, year, label):
     return bar_fig
 
 
+def make_sankey_chart(df, year, view_type):
+    if view_type == 'Yearly':
+        df_filtered = df[df['Year'] == year]
+        title = f"Cash Flow Statement {year}"
+    else:  # Monthly view
+        current_month = datetime.now().month
+        df_filtered = df[(df['Year'] == year) & (df['Month'] == current_month)]
+        title = f"Cash Flow Statement {df_filtered['Month Name'].iloc[0]} {year}"
+
+    # Prepare data for Sankey diagram
+    income_categories = df_filtered[df_filtered['Expense/Income'] == 'Income'].groupby('Category')['Amount (CHF)'].sum()
+    expense_categories = df_filtered[df_filtered['Expense/Income'] == 'Expense'].groupby('Category')[
+        'Amount (CHF)'].sum()
+
+    total_income = income_categories.sum()
+    total_expense = expense_categories.sum()
+    savings = total_income - total_expense
+
+    # Create nodes
+    nodes = (
+            ['Total Income'] +
+            list(income_categories.index) +
+            ['Available Money'] +
+            list(expense_categories.index) +
+            ['Savings']
+    )
+
+    # Create links
+    links = (
+            [{'source': nodes.index('Total Income'), 'target': nodes.index(cat), 'value': val}
+             for cat, val in income_categories.items()] +
+            [{'source': nodes.index(cat), 'target': nodes.index('Available Money'), 'value': val}
+             for cat, val in income_categories.items()] +
+            [{'source': nodes.index('Available Money'), 'target': nodes.index(cat), 'value': val}
+             for cat, val in expense_categories.items()] +
+            [{'source': nodes.index('Available Money'), 'target': nodes.index('Savings'), 'value': savings}]
+    )
+
+    # Create Sankey diagram
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            pad=15,
+            thickness=20,
+            line=dict(color="black", width=0.5),
+            label=nodes,
+            color="blue"
+        ),
+        link=dict(
+            source=[link['source'] for link in links],
+            target=[link['target'] for link in links],
+            value=[link['value'] for link in links]
+        ))])
+
+    fig.update_layout(
+        title_text=title,
+        font_size=10,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color="#FFFFFF"),
+    )
+
+    return fig
+
+
 def main():
     global llm, df
 
@@ -333,6 +398,7 @@ def main():
     # Create charts pane
     income_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_both')
     expense_chart_pane = pn.pane.Plotly(height=400, sizing_mode='stretch_both')
+    sankey_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
     charts_row = pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_both')
 
     def update_charts(event):
@@ -346,8 +412,11 @@ def main():
             income_chart = make_monthly_bar_chart(df, year, 'Income')
             expense_chart = make_monthly_bar_chart(df, year, 'Expense')
 
+        sankey_chart = make_sankey_chart(df, year, view_type)
+
         income_chart_pane.object = income_chart
         expense_chart_pane.object = expense_chart
+        sankey_chart_pane.object = sankey_chart
 
     year_selector.param.watch(update_charts, 'value')
     view_type_selector.param.watch(update_charts, 'value')
@@ -367,7 +436,7 @@ def main():
             view_type_selector,
             transaction_form
         ],
-        main=[charts_row],
+        main=[charts_row, sankey_chart_pane],
         header_background="#4a4a4a",
         accent_base_color="#008080",
         theme='dark',
