@@ -126,7 +126,7 @@ def add_transaction_to_csv(date, description, amount, expense_income):
         'Expense/Income': [expense_income]
     })
 
-    df = pd.read_csv('transactions.csv')
+    df = pd.read_csv('revision/transactions.csv')
     df = pd.concat([df, new_transaction], ignore_index=True)
     df.to_csv('transactions.csv', index=False)
 
@@ -219,7 +219,7 @@ def make_monthly_bar_chart(df, year, label):
 def main():
     llm = Ollama(model="llama3.2")
 
-    df = pd.read_csv('transactions.csv')
+    df = pd.read_csv('revision/transactions.csv')
     df['Date'] = df['Date'].apply(parse_date)
     df['Year'] = df['Date'].dt.year
     df['Month'] = df['Date'].dt.month

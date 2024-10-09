@@ -4,3 +4,4 @@ plotly >= 5.24.1
 panel >= 1.5.2
 langchain-community>= 0.3.1
 pydantic~=2.9.2
+scikit-learn~=1.5.2

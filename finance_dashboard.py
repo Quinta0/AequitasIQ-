@@ -9,6 +9,12 @@ import plotly.graph_objects as go
 from langchain_community.llms import Ollama
 from pydantic import BaseModel, field_validator
 
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
+import plotly.graph_objects as go
+
 
 class ResponseChecks(BaseModel):
     data: List[str]
@@ -25,6 +31,76 @@ class ResponseChecks(BaseModel):
             raise ValueError("No valid categorizations found in the response")
         return valid_items
 
+
+def create_predictive_chart(df, forecast_period=6):
+    # Prepare the data
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values('Date')
+    df['MonthYear'] = df['Date'].dt.to_period('M')
+
+    # Aggregate data by month
+    monthly_data = df.groupby(['MonthYear', 'Expense/Income'])['Amount (CHF)'].sum().unstack()
+    monthly_data.index = monthly_data.index.to_timestamp()
+
+    # Create features
+    monthly_data['Month'] = monthly_data.index.month
+    monthly_data['Year'] = monthly_data.index.year
+
+    # Separate income and expense data
+    income_data = monthly_data[['Income', 'Month', 'Year']].dropna()
+    expense_data = monthly_data[['Expense', 'Month', 'Year']].dropna()
+
+    # Function to train model and make predictions
+    def predict(data, label):
+        X = data[['Month', 'Year']]
+        y = data[label]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model.fit(X_train, y_train)
+
+        # Generate future dates
+        last_date = data.index[-1]
+        future_dates = pd.date_range(start=last_date + pd.DateOffset(months=1), periods=forecast_period, freq='M')
+        future_X = pd.DataFrame({'Month': future_dates.month, 'Year': future_dates.year})
+
+        # Make predictions
+        future_pred = model.predict(future_X)
+
+        return future_dates, future_pred
+
+    # Make predictions
+    income_dates, income_pred = predict(income_data, 'Income')
+    expense_dates, expense_pred = predict(expense_data, 'Expense')
+
+    # Create the plot
+    fig = go.Figure()
+
+    # Actual data
+    fig.add_trace(
+        go.Scatter(x=monthly_data.index, y=monthly_data['Income'], mode='lines+markers', name='Actual Income'))
+    fig.add_trace(
+        go.Scatter(x=monthly_data.index, y=monthly_data['Expense'], mode='lines+markers', name='Actual Expense'))
+
+    # Predicted data
+    fig.add_trace(
+        go.Scatter(x=income_dates, y=income_pred, mode='lines', name='Predicted Income', line=dict(dash='dash')))
+    fig.add_trace(
+        go.Scatter(x=expense_dates, y=expense_pred, mode='lines', name='Predicted Expense', line=dict(dash='dash')))
+
+    # Layout
+    fig.update_layout(
+        title='Income and Expense Trends with Predictions',
+        xaxis_title='Date',
+        yaxis_title='Amount (CHF)',
+        legend_title='Legend',
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color="#FFFFFF"),
+    )
+
+    return fig
 
 def parse_date(date_string):
     try:
@@ -143,7 +219,7 @@ def add_transaction_to_csv(date, description, amount, expense_income):
         'Expense/Income': [expense_income]
     })
 
-    df = pd.read_csv('transactions.csv')
+    df = pd.read_csv('revision/transactions.csv')
     df = pd.concat([df, new_transaction], ignore_index=True)
     df.to_csv('transactions.csv', index=False)
 
@@ -347,7 +423,7 @@ def main():
     llm = Ollama(model="llama3.2")
 
     # Read and process data
-    df = pd.read_csv('transactions.csv')
+    df = pd.read_csv('revision/transactions.csv')
     df['Date'] = df['Date'].apply(parse_date)
     df['Year'] = df['Date'].dt.year
     df['Month'] = df['Date'].dt.month
@@ -401,6 +477,11 @@ def main():
     sankey_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
     charts_row = pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_both')
 
+
+    # ML preditions
+    predictive_chart = create_predictive_chart(df)
+    predictive_chart_pane = pn.pane.Plotly(predictive_chart, height=400, sizing_mode='stretch_both')
+
     def update_charts(event):
         year = year_selector.value
         view_type = view_type_selector.value
@@ -436,7 +517,7 @@ def main():
             view_type_selector,
             transaction_form
         ],
-        main=[charts_row, sankey_chart_pane],
+        main=[charts_row, sankey_chart_pane, predictive_chart_pane],
         header_background="#4a4a4a",
         accent_base_color="#008080",
         theme='dark',
