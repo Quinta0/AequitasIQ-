@@ -69,10 +69,10 @@ def create_view_type_selector():
     return pn.widgets.RadioButtonGroup(name='View Type', options=['Yearly', 'Monthly'], value='Yearly')
 
 def create_charts_pane():
-    income_chart_pane = pn.pane.Plotly(sizing_mode='stretch_both')
-    expense_chart_pane = pn.pane.Plotly(sizing_mode='stretch_both')
-    sankey_chart_pane = pn.pane.Plotly(sizing_mode='stretch_both')
-    predictive_chart_pane = pn.pane.Plotly(sizing_mode='stretch_both')
+    income_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
+    expense_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
+    sankey_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
+    predictive_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
 
     return pn.Column(
         pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_both'),
@@ -87,26 +87,11 @@ def create_transaction_table(tm):
             tm.update_transaction(item['index'], item)
         table.value = tm.df  # Refresh the table
 
-    def delete_transaction(event):
-        for item in event.rows:
-            tm.delete_transaction(item)
-        table.value = tm.df  # Refresh the table
-
     formatters = {
         'Date': {'type': 'datetime', 'format': 'YYYY-MM-DD'},
         'Amount (CHF)': {'type': 'numberFormatter', 'precision': 2},
         'Fixed': {'type': 'tickCross'},
     }
-
-    columns = [
-        {'field': 'Date', 'title': 'Date'},
-        {'field': 'Name / Description', 'title': 'Description'},
-        {'field': 'Amount (CHF)', 'title': 'Amount (CHF)'},
-        {'field': 'Expense/Income', 'title': 'Type'},
-        {'field': 'Fixed', 'title': 'Fixed'},
-        {'field': 'Frequency', 'title': 'Frequency'},
-        {'field': 'Category', 'title': 'Category'},
-    ]
 
     table = pn.widgets.Tabulator(
         tm.df,
@@ -118,8 +103,18 @@ def create_transaction_table(tm):
         height=400
     )
 
+    # Set up columns after initialization
+    table.columns = [
+        {'field': 'Date', 'title': 'Date', 'editor': 'date'},
+        {'field': 'Name / Description', 'title': 'Description', 'editor': 'input'},
+        {'field': 'Amount (CHF)', 'title': 'Amount (CHF)', 'editor': 'number'},
+        {'field': 'Expense/Income', 'title': 'Type', 'editor': 'select', 'editorParams': {'values': ['Expense', 'Income']}},
+        {'field': 'Fixed', 'title': 'Fixed', 'editor': 'tickCross'},
+        {'field': 'Frequency', 'title': 'Frequency', 'editor': 'select', 'editorParams': {'values': ['', 'Monthly', 'Quarterly', 'Semi-annual', 'Annual']}},
+        {'field': 'Category', 'title': 'Category', 'editor': 'input'},
+    ]
+
     table.on_edit(edit_transaction)
-    table.on_delete(delete_transaction)
 
     return table
 

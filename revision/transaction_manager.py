@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 from typing import List, Dict
 from pydantic import BaseModel, field_validator
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 import os
 
 
@@ -26,7 +26,7 @@ class TransactionManager:
     def __init__(self, transactions_file: str, categorized_file: str):
         self.transactions_file = transactions_file
         self.categorized_file = categorized_file
-        self.llm = Ollama(model="llama3.2")
+        self.llm = OllamaLLM(model="llama3.2")
         self.df = self._load_and_process_data()
 
     def _load_and_process_data(self):
@@ -136,7 +136,7 @@ class TransactionManager:
     def get_category_count(self):
         return len(self.df['Category'].unique())
 
-    def update_transaction(self, index: int, updated_data: Dict):
+    def update_transaction(self, index, updated_data):
         self.df.loc[index] = updated_data
         self.df.to_csv(self.transactions_file, index=False)
         self._update_categorized_file({updated_data['Name / Description']: updated_data['Category']})
