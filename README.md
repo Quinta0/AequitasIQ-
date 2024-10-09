@@ -60,7 +60,7 @@ AequitasIQ is an intelligent financial analysis tool that creates an interactive
 
 3. Run the script:
    ```
-   python finance_dashboard.py
+   python main.py
    ```
 
 4. The AequitasIQ dashboard will open in your default web browser, providing balanced insights into your finances
