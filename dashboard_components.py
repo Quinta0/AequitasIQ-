@@ -1,6 +1,6 @@
-import panel as pn
 from datetime import datetime
-from chart_utils import update_charts
+
+import panel as pn
 
 
 def create_transaction_form(tm, year_selector, view_type_selector, charts_pane):
@@ -64,6 +64,11 @@ def create_transaction_form(tm, year_selector, view_type_selector, charts_pane):
 
 def create_year_selector(available_years):
     return pn.widgets.Select(name='Select Year', options=available_years, value=max(available_years))
+
+def create_month_selector():
+    months = ['January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December']
+    return pn.widgets.Select(name='Select Month', options=months, value='January')
 
 def create_view_type_selector():
     return pn.widgets.RadioButtonGroup(name='View Type', options=['Yearly', 'Monthly'], value='Yearly')
