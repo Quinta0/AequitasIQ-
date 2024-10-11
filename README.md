@@ -56,14 +56,12 @@ AequitasIQ is an intelligent financial analysis tool that creates an interactive
    - Ensure the dates are in the format YYYY-MM-DD
    - Place this file in the same directory as the script
 
-2. Add an image named `picture.png` in the same directory for the dashboard sidebar (optional)
-
-3. Run the script:
+2. Run the script:
    ```
    python main.py
    ```
 
-4. The AequitasIQ dashboard will open in your default web browser, providing balanced insights into your finances
+3. The AequitasIQ dashboard will open in your default web browser, providing balanced insights into your finances
 
 ## Dashboard Layout
 
