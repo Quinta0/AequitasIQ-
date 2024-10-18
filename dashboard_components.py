@@ -3,18 +3,20 @@ from datetime import datetime
 from chart_utils import update_charts
 
 
-def create_transaction_form(tm, year_selector, view_type_selector, charts_pane):
+def create_transaction_form(tm, year_selector, view_type_selector, month_selector, charts_pane):
     date_input = pn.widgets.DatePicker(name='Date', value=datetime.now().date())
     description_input = pn.widgets.TextInput(name='Description')
     amount_input = pn.widgets.FloatInput(name='Amount (CHF)')
     expense_income_input = pn.widgets.Select(name='Expense/Income', options=['Expense', 'Income'])
     fixed_input = pn.widgets.Checkbox(name='Fixed')
     frequency_input = pn.widgets.Select(name='Frequency', options=['', 'Monthly', 'Quarterly', 'Semi-annual', 'Annual'])
-
+        
     def update_dashboard():
-        # Update charts
         from chart_utils import update_charts
-        update_charts(tm, year_selector.value, view_type_selector.value, charts_pane)
+        if view_type_selector.value == 'Monthly':
+            update_charts(tm, year_selector.value, view_type_selector.value, charts_pane, month_selector.value[0])  # Use month_selector.value[0] to get the month number
+        else:
+            update_charts(tm, year_selector.value, view_type_selector.value, charts_pane)
 
     def add_transaction(event):
         date = date_input.value
@@ -65,6 +67,11 @@ def create_transaction_form(tm, year_selector, view_type_selector, charts_pane):
 def create_year_selector(available_years):
     return pn.widgets.Select(name='Select Year', options=available_years, value=max(available_years))
 
+def create_month_selector():
+    current_month = datetime.now().month
+    month_options = [(i, datetime(2000, i, 1).strftime('%B')) for i in range(1, 13)]
+    return pn.widgets.Select(name='Select Month', options=month_options, value=current_month)
+
 def create_view_type_selector():
     return pn.widgets.RadioButtonGroup(name='View Type', options=['Yearly', 'Monthly'], value='Yearly')
 
@@ -72,12 +79,12 @@ def create_charts_pane():
     income_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
     expense_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
     sankey_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
-    predictive_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
+    # predictive_chart_pane = pn.pane.Plotly(height=600, sizing_mode='stretch_both')
 
     return pn.Column(
         pn.Row(income_chart_pane, expense_chart_pane, sizing_mode='stretch_both'),
         sankey_chart_pane,
-        predictive_chart_pane,
+        # predictive_chart_pane,
         sizing_mode='stretch_both'
     )
 

@@ -1,2 +1,6 @@
 transactions.csv
 categorized_transactions.csv
+__pycache__
+.venv
+.idea
+categorized_transactions.csv
