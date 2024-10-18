@@ -1,18 +1,20 @@
+from datetime import datetime
+
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from datetime import datetime
+from sklearn.model_selection import train_test_split
+
 
 def make_chart(df, year, label, month=None):
     if month:
-        sub_df = df[(df['Expense/Income'] == label) & (df['Year'] == year) & (df['Month'] == month)]
-        period = f"{datetime(year, month, 1).strftime('%B')} {year}"
+        month_number = datetime.strptime(month, '%B').month
+        sub_df = df[(df['Expense/Income'] == label) & (df['Year'] == year) & (df['Month'] == month_number)]
+        title_suffix = f"{month} {year}"
     else:
         sub_df = df[(df['Expense/Income'] == label) & (df['Year'] == year)]
-        period = str(year)
+        title_suffix = str(year)
 
     total_expense = sub_df[sub_df['Expense/Income'] == 'Expense']['Amount (CHF)'].sum()
     total_income = sub_df[sub_df['Expense/Income'] == 'Income']['Amount (CHF)'].sum()
@@ -34,7 +36,7 @@ def make_chart(df, year, label, month=None):
     fig.update_layout(
         uniformtext_minsize=10,
         uniformtext_mode='hide',
-        title=dict(text=f"{label} Breakdown for {period}"),
+        title=dict(text=f"{label} Breakdown {title_suffix}"),
         annotations=[
             dict(text=total_text, x=0.5, y=-0.1, font_size=12, showarrow=False, xref='paper', yref='paper'),
             dict(text=saving_rate_text, x=0.5, y=-0.15, font_size=12, showarrow=False, xref='paper', yref='paper')
@@ -46,33 +48,45 @@ def make_chart(df, year, label, month=None):
     )
     return fig
 
+def make_monthly_bar_chart(df, year, label, month=None):
+    df = df[(df['Expense/Income'] == label) & (df['Year'] == year)]
+    if month:
+        month_number = datetime.strptime(month, '%B').month
+        df = df[df['Month'] == month_number]
+        total_by_category = df.groupby('Category')['Amount (CHF)'].sum().reset_index().sort_values(by='Amount (CHF)', ascending=False)
+        x_axis = 'Category'
+        title = f"{label} for {month} {year}"
+    else:
+        total_by_category = (df.groupby(['Month', 'Month Name'])['Amount (CHF)'].sum()
+                            .to_frame()
+                            .reset_index()
+                            .sort_values(by='Month')
+                            .reset_index(drop=True))
+        x_axis = 'Month Name'
+        title = f"{label} per month in {year}"
+
+    color_scale = px.colors.sequential.Greens if label == "Income" else px.colors.sequential.Reds
+
+    bar_fig = px.bar(total_by_category, x=x_axis, y='Amount (CHF)', text_auto='.2s',
+                     title=title, color='Amount (CHF)', color_continuous_scale=color_scale)
+
+    bar_fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        autosize=True,
+        font=dict(color="#FFFFFF"),
+    )
+
+    return bar_fig
+
 def make_sankey_chart(df, year, view_type, month=None):
     if view_type == 'Yearly':
         df_filtered = df[df['Year'] == year]
         title = f"Cash Flow Statement {year}"
     else:  # Monthly view
-        if month is None:
-            month = datetime.now().month
-        df_filtered = df[(df['Year'] == year) & (df['Month'] == month)]
-        month_name = datetime(year, month, 1).strftime('%B')
-        title = f"Cash Flow Statement {month_name} {year}"
-
-    if df_filtered.empty:
-        # Return an empty figure with a message
-        fig = go.Figure()
-        fig.add_annotation(
-            text="No data available for the selected period",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False
-        )
-        fig.update_layout(
-            title_text=title,
-            font_size=10,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color="#FFFFFF"),
-        )
-        return fig
+        month_number = datetime.strptime(month, '%B').month if month else datetime.now().month
+        df_filtered = df[(df['Year'] == year) & (df['Month'] == month_number)]
+        title = f"Cash Flow Statement {month} {year}"
 
     income_categories = df_filtered[df_filtered['Expense/Income'] == 'Income'].groupby('Category')['Amount (CHF)'].sum()
     expense_categories = df_filtered[df_filtered['Expense/Income'] == 'Expense'].groupby('Category')['Amount (CHF)'].sum()
@@ -182,15 +196,15 @@ def update_charts(tm, year, view_type, charts_pane, month=None):
         df = tm.get_data_for_year(year)
         income_chart = make_chart(df, year, 'Income')
         expense_chart = make_chart(df, year, 'Expense')
+        sankey_chart = make_sankey_chart(df, year, view_type)
     else:  # Monthly view
-        if month is None:
-            month = datetime.now().month
-        df = tm.get_data_for_month(year, month)
+        month_number = datetime.strptime(month, '%B').month if month else datetime.now().month
+        df = tm.get_data_for_month(year, month_number)
         income_chart = make_chart(df, year, 'Income', month)
         expense_chart = make_chart(df, year, 'Expense', month)
+        sankey_chart = make_sankey_chart(df, year, view_type, month)
 
-    sankey_chart = make_sankey_chart(df, year, view_type, month)
-    # predictive_chart = create_predictive_chart(tm.df)
+    predictive_chart = create_predictive_chart(tm.df)
 
     charts_pane[0][0].object = income_chart
     charts_pane[0][1].object = expense_chart
