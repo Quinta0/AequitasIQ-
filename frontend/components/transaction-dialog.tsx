@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Transaction } from '@/types'
 import { format } from 'date-fns'
+import { api } from '@/lib/api'
 
 interface TransactionDialogProps {
   transaction?: Transaction
@@ -37,27 +38,52 @@ interface FormData {
 }
 
 export function TransactionDialog({ transaction, onSave, children }: TransactionDialogProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     date: transaction?.date || format(new Date(), 'yyyy-MM-dd'),
     description: transaction?.description || '',
     amount: transaction?.amount?.toString() || '',
     category: transaction?.category || '',
     type: transaction?.type || 'expense'
-  })
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleDescriptionChange = async (newDescription: string) => {
+    setFormData(prev => ({ ...prev, description: newDescription }));
     
-    // Convert form data to match Transaction type
-    const submissionData: Partial<Transaction> = {
-      ...formData,
-      amount: parseFloat(formData.amount) // Convert string to number
+    if (newDescription.length > 3 && !transaction) { // Only auto-categorize for new transactions
+      try {
+        const response = await api.post('/test-categorize', null, {
+          params: { description: newDescription }
+        });
+        if (response.data.success) {
+          setFormData(prev => ({ ...prev, category: response.data.category }));
+        }
+      } catch (error) {
+        console.error('Error auto-categorizing:', error);
+      }
     }
+  };
 
-    onSave(submissionData)
-    setOpen(false)
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      // Convert form data to match Transaction type
+      const submissionData: Partial<Transaction> = {
+        ...formData,
+        amount: parseFloat(formData.amount) // Convert string to number
+      };
+
+      await onSave(submissionData);
+      setOpen(false);
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTypeChange = (value: 'income' | 'expense') => {
     setFormData(prev => ({

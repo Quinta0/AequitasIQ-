@@ -15,6 +15,12 @@ export function Navbar() {
           <Link href="/bills">
             <Button variant="ghost">Bills</Button>
           </Link>
+          <Link href="/budget">
+            <Button variant="ghost">Budget</Button>
+          </Link>
+          <Link href="/consulting">
+            <Button variant="ghost">Consulting</Button>
+          </Link>
         </nav>
       </div>
     </header>

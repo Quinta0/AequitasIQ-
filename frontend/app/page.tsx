@@ -1,7 +1,8 @@
 import { Suspense } from 'react'
-import { ExpenseOverview } from '@/components/expense-overview'
+import { FinancialMetrics } from '@/components/financial-metrics'
 import { TransactionList } from '@/components/transaction-list'
 import { BillCalendar } from '@/components/bill-calendar'
+import { Statistics } from '@/components/statistics'
 
 export default function DashboardPage() {
   return (
@@ -10,7 +11,7 @@ export default function DashboardPage() {
       
       <div className="grid gap-6 md:grid-cols-2">
         <Suspense fallback={<div>Loading overview...</div>}>
-          <ExpenseOverview />
+          <FinancialMetrics />
         </Suspense>
         
         <Suspense fallback={<div>Loading transactions...</div>}>
@@ -21,6 +22,10 @@ export default function DashboardPage() {
       <Suspense fallback={<div>Loading calendar...</div>}>
         <BillCalendar />
       </Suspense>
+
+      <Suspense fallback={<div>Loading statistics...</div>}>
+        <Statistics />
+      </Suspense>
     </div>
   )
-}
+} 
