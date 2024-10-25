@@ -1,11 +1,42 @@
-transactions.csv
-categorized_transactions.csv
-__pycache__
-.venv
-.idea
-categorized_transactions.csv
-__pycache__
-.venv
-.idea
-categorized_transactions.csv
-bills
+# Backend
+venv/
+backend/__pycache__/
+*.pyc
+backend/.env
+backend/data/finance.db
+
+# Frontend
+# dependencies
+frontent/node_modules
+frontent/.pnp
+frontent/.pnp.js
+frontent/.yarn/install-state.gz
+
+# testing
+frontent/coverage
+
+# next.js
+frontent/.next/
+frontent/out/
+
+# production
+frontent/build
+
+# misc
+frontent/.DS_Store
+frontent/*.pem
+
+# debug
+frontent/npm-debug.log*
+frontent/yarn-debug.log*
+frontent/yarn-error.log*
+
+# local env files
+frontent/.env*.local
+
+# vercel
+frontent/.vercel
+
+# typescript
+frontent/*.tsbuildinfo
+frontent/next-env.d.ts
