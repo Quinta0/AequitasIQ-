@@ -1,98 +1,172 @@
-# AequitasIQ
+# AequitasIQ - Personal Finance Dashboard
 
-## Overview
-
-AequitasIQ is an intelligent financial analysis tool that creates an interactive dashboard to visualize personal income and expenses. Combining the principles of fairness (Aequitas) with artificial intelligence (IQ), it uses machine learning to categorize transactions and presents data through intuitive charts and graphs, offering smart, balanced insights into your financial world.
+AequitasIQ is a comprehensive personal finance management system that helps you track expenses, manage bills, and gain insights into your financial health. Built with modern web technologies, it offers an intuitive interface for managing your finances with advanced features like AI-powered transaction categorization and financial advice.
 
 ## Features
 
-- AI-powered categorization of transactions using Ollama LLM
-- Interactive dashboard with clear, equitable representation of financial data
-- Comprehensive analysis of income and expenses
-- Automatic calculation of saving rates
-- Support for multi-year data (focused on current and future years)
-- Intelligent date parsing to handle potential errors in transaction dates
+- 📊 Interactive dashboard with expense tracking and visualization
+- 💰 Transaction management with automatic categorization
+- 📅 Bill tracking and recurring payment management
+- 📈 Financial insights and statistics
+- 🤖 AI-powered financial advisor
+- 📱 Responsive design for desktop and mobile
+- 📤 CSV import functionality
+- 🎯 Budget planning and tracking
 
-## Requirements
+## Tech Stack
 
-- Python 3.7+
-- Pandas
-- NumPy
-- Plotly
-- Panel
-- Langchain Community
-- Pydantic
-- Ollama (with the llama3.1 8B model or 3.2 3B for less RAM and GPU usage)
+### Frontend
+- Next.js 14 with App Router
+- TypeScript
+- TailwindCSS
+- shadcn/ui components
+- Recharts for data visualization
+- React Query for state management
 
-## Installation
+### Backend
+- FastAPI
+- SQLAlchemy
+- SQLite database
+- LangChain with Ollama for AI features
+- Pandas for data processing
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/Quinta0/AequitasIQ-.git
-   cd AequitasIQ-
-   ```
+## Quick Start
 
-2. Create a virtual environment (optional but recommended):
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   ```
+### Prerequisites
+- Docker and Docker Compose
+- Git
 
-3. Install the required packages:
-   ```
-   pip install -r requirements.txt
-   ```
+### Installation
 
-4. Ensure you have Ollama installed and the llama3.1 model available.
+1. Clone the repository:
+```bash
+git clone https://github.com/Quinta0/AequitasIQ-.git
+cd AequitasIQ-
+```
 
-## Usage
+2. Start the application using Docker Compose:
+```bash
+docker compose up --build
+```
 
-1. Prepare your transaction data:
-   - Create a CSV file named `transactions.csv` with the following columns:
-     - Date
-     - Name / Description
-     - Expense/Income
-     - Amount (CHF)
-   - Ensure the dates are in the format YYYY-MM-DD
-   - Place this file in the same directory as the script
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
-2. Run the script:
-   ```
-   python main.py
-   ```
+## Development Setup
 
-3. The AequitasIQ dashboard will open in your default web browser, providing balanced insights into your finances
+### Frontend
 
-## Dashboard Layout
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
 
-The AequitasIQ dashboard consists of two tabs, one for the current year and one for the next year. Each tab contains:
+2. Install dependencies:
+```bash
+npm install
+```
 
-- A pie chart showing the fair distribution of income sources
-- A pie chart revealing the balanced allocation of expenses by category
-- A bar chart illustrating the trend of monthly income
-- A bar chart depicting the pattern of monthly expenses
+3. Start the development server:
+```bash
+npm run dev
+```
 
-## Customization
+### Backend
 
-- To change the currency, modify the "CHF" references in the code to your preferred currency
-- Adjust the `category_mappings` dictionary in the `clean_categories` function to customize category groupings and ensure fair representation of your financial data
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
 
-## Troubleshooting
+2. Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-- If you encounter date parsing errors, check that your CSV file uses the YYYY-MM-DD format
-- Ensure that the Ollama service is running and the llama3.1 model is available
-- For any categorization errors, review the console output for specific error messages
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Start the development server:
+```bash
+uvicorn main:app --reload
+```
+
+## Project Structure
+
+```
+.
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   ├── public/
+│   └── types/
+├── backend/
+│   ├── models/
+│   ├── schemas/
+│   ├── services/
+│   ├── crud/
+│   └── main.py
+└── data/
+```
+
+## Features Documentation
+
+### Dashboard
+The dashboard provides an overview of your financial health with:
+- Monthly expense trends
+- Income vs. expense comparison
+- Recent transactions
+- Upcoming bills
+- Financial metrics like savings rate
+
+### Transaction Management
+- Add, edit, and delete transactions
+- Automatic categorization using AI
+- Bulk import via CSV
+- Filter and search capabilities
+- Transaction history visualization
+
+### Bill Management
+- Track recurring and one-time bills
+- Set up payment reminders
+- Categorize bills
+- View upcoming payments in calendar view
+
+### Financial Insights
+- Category-wise expense breakdown
+- Income source analysis
+- Savings rate tracking
+- Budget vs. actual spending comparison
+- Custom date range analysis
+
+### AI Financial Advisor
+- Get personalized financial advice
+- Analyze spending patterns
+- Receive budgeting recommendations
+- Smart transaction categorization
 
 ## Contributing
 
-Contributions to AequitasIQ are welcome! Please fork the repository and submit a pull request with your intelligent improvements.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Support
+
+If you encounter any issues or have questions, please:
+1. Search existing [Issues](https://github.com/Quinta0/AequitasIQ-/issues)
+2. Create a new issue if needed
+
 ## Acknowledgments
 
-- This project uses the Ollama LLM for intelligent transaction categorization
-- Dashboard creation is powered by the analytical capabilities of Panel and Plotly
-
+- [shadcn/ui](https://ui.shadcn.com/) for the UI components
+- [Recharts](https://recharts.org/) for the charting library
+- [Ollama](https://ollama.ai/) for the AI capabilities
