@@ -1,42 +1,46 @@
 # Backend
-venv/
-backend/__pycache__/
-*.pyc
-backend/.env
-backend/data/finance.db
+/backend/venv/
+/backend/__pycache__/
+/backend/*.pyc
+/backend/.env
+/backend/data/finance.db
+/backend/data
+/backend/app/__pycache__/
 
 # Frontend
 # dependencies
-frontent/node_modules
-frontent/.pnp
-frontent/.pnp.js
-frontent/.yarn/install-state.gz
+/frontent/node_modules
+/frontent/.pnp
+/frontent/.pnp.js
+/frontent/.yarn/install-state.gz
 
 # testing
-frontent/coverage
+/frontent/coverage
 
 # next.js
-frontent/.next/
-frontent/out/
+/frontent/.next/
+/frontent/out/
 
 # production
-frontent/build
+/frontent/build
 
 # misc
-frontent/.DS_Store
-frontent/*.pem
+/frontent/.DS_Store
+/frontent/*.pem
 
 # debug
-frontent/npm-debug.log*
-frontent/yarn-debug.log*
-frontent/yarn-error.log*
+/frontent/npm-debug.log*
+/frontent/yarn-debug.log*
+/frontent/yarn-error.log*
 
 # local env files
-frontent/.env*.local
+/frontent/.env*.local
 
 # vercel
-frontent/.vercel
+/frontent/.vercel
 
 # typescript
-frontent/*.tsbuildinfo
-frontent/next-env.d.ts
+/frontent/*.tsbuildinfo
+/frontent/next-env.d.ts
+/frontend/.next
+/frontend/node_modules
