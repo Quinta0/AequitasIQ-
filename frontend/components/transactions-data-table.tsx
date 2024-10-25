@@ -20,10 +20,15 @@ import { Button } from '@/components/ui/button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Transaction } from '@/types'
-import { format } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import { MoreHorizontal, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TransactionDialog } from '@/components/transaction-dialog'
+import axios from 'axios'
+
+type TransactionKey = keyof Transaction
+type TransactionKeys = keyof Omit<Transaction, 'id' | 'created_at' | 'updated_at'>;
+type EditableFields = Pick<Transaction, 'date' | 'description' | 'amount' | 'category' | 'type'>;
 
 export function TransactionsDataTable() {
   const [page, setPage] = useState(1)
@@ -44,20 +49,86 @@ export function TransactionsDataTable() {
     },
   })
 
-  const handleSave = async (transactionData: Partial<Transaction>) => {
-    try {
-      if (selectedTransaction) {
-        // Update existing transaction
-        await api.put(`/transactions/${selectedTransaction.id}`, transactionData)
-      } else {
-        // Create new transaction
-        await api.post('/transactions', transactionData)
+  const formatDate = (date: string | Date): string => {
+    if (typeof date === 'string') {
+      // If it's already in YYYY-MM-DD format, return as is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date
       }
-      // Refetch transactions after save
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      // Try to parse the date string
+      const parsedDate = parseISO(date)
+      if (isValid(parsedDate)) {
+        return format(parsedDate, 'yyyy-MM-dd')
+      }
+    }
+    if (date instanceof Date && isValid(date)) {
+      return format(date, 'yyyy-MM-dd')
+    }
+    // Default to current date if invalid
+    return format(new Date(), 'yyyy-MM-dd')
+  }
+
+  const handleSave = async (transactionData: Partial<EditableFields>) => {
+    try {
+      const formattedData = {
+        ...transactionData,
+        date: formatDate(transactionData.date!),
+        amount: typeof transactionData.amount === 'string' 
+          ? parseFloat(transactionData.amount)
+          : transactionData.amount
+      }
+
+      console.log('Initial formatted data:', formattedData)
+      
+      let response
+      if (selectedTransaction) {
+        // For updates, only include changed fields
+        const changedFields = (Object.keys(formattedData) as TransactionKeys[]).reduce((acc, key) => {
+          const value = formattedData[key]
+          if (value !== undefined && selectedTransaction[key] !== value) {
+            (acc as any)[key] = value
+          }
+          return acc
+        }, {} as Partial<EditableFields>)
+
+        console.log('Changed fields for update:', changedFields)
+        
+        response = await api.put(
+          `/transactions/${selectedTransaction.id}`, 
+          changedFields,
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      } else {
+        response = await api.post(
+          '/transactions', 
+          formattedData,
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      }
+      
+      console.log('API Response:', response.data)
+      
+      await queryClient.invalidateQueries({ queryKey: ['transactions'] })
       setSelectedTransaction(undefined)
     } catch (error) {
-      console.error('Error saving transaction:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('API Error Details:', error.response?.data)
+        const errorMessage = error.response?.data?.detail 
+          ? JSON.stringify(error.response?.data.detail)
+          : 'Failed to save transaction'
+        throw new Error(errorMessage)
+      } else {
+        console.error('Error saving transaction:', error)
+        throw error
+      }
     }
   }
 

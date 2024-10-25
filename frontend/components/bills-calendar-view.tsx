@@ -60,7 +60,7 @@ export function BillsCalendarView() {
         </BillDialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[300px_1fr]">
+      <div className="grid gap-6 md:grid-cols-[320px_1fr]">
         <Card>
           <CardContent className="p-4">
             <Calendar

@@ -37,53 +37,77 @@ interface FormData {
   type: 'income' | 'expense'
 }
 
+type TransactionKey = keyof Transaction
+
 export function TransactionDialog({ transaction, onSave, children }: TransactionDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<FormData>({
     date: transaction?.date || format(new Date(), 'yyyy-MM-dd'),
     description: transaction?.description || '',
     amount: transaction?.amount?.toString() || '',
     category: transaction?.category || '',
     type: transaction?.type || 'expense'
-  });
+  })
 
   const handleDescriptionChange = async (newDescription: string) => {
-    setFormData(prev => ({ ...prev, description: newDescription }));
+    setFormData(prev => ({ ...prev, description: newDescription }))
     
-    if (newDescription.length > 3 && !transaction) { // Only auto-categorize for new transactions
+    if (newDescription.length > 3 && !transaction) {
       try {
         const response = await api.post('/test-categorize', null, {
           params: { description: newDescription }
-        });
+        })
         if (response.data.success) {
-          setFormData(prev => ({ ...prev, category: response.data.category }));
+          setFormData(prev => ({ ...prev, category: response.data.category }))
         }
       } catch (error) {
-        console.error('Error auto-categorizing:', error);
+        console.error('Error auto-categorizing:', error)
       }
     }
-  };
+  }
+
+  const validateForm = () => {
+    if (!formData.date) return "Date is required"
+    if (!formData.description.trim()) return "Description is required"
+    if (!formData.amount || parseFloat(formData.amount) <= 0) return "Amount must be greater than 0"
+    if (!formData.category.trim()) return "Category is required"
+    return null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
     
     try {
-      // Convert form data to match Transaction type
-      const submissionData: Partial<Transaction> = {
-        ...formData,
-        amount: parseFloat(formData.amount) // Convert string to number
-      };
+      // Validate form
+      const validationError = validateForm()
+      if (validationError) {
+        throw new Error(validationError)
+      }
 
-      await onSave(submissionData);
-      setOpen(false);
-    } catch (error) {
-      console.error('Error saving transaction:', error);
+      // Format data for submission
+      const submissionData: Partial<Transaction> = {
+        date: formData.date,
+        description: formData.description.trim(),
+        amount: parseFloat(formData.amount),
+        category: formData.category.trim(),
+        type: formData.type
+      }
+
+      console.log('Submitting data:', submissionData)
+      await onSave(submissionData)
+      setOpen(false)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      setError(errorMessage)
+      console.error('Error saving transaction:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleTypeChange = (value: 'income' | 'expense') => {
     setFormData(prev => ({
@@ -127,9 +151,7 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
             <Input
               id="description"
               value={formData.description}
-              onChange={(e) =>
-                setFormData(prev => ({ ...prev, description: e.target.value }))
-              }
+              onChange={(e) => handleDescriptionChange(e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -174,10 +196,13 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
+              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save'}
+            </Button>   
           </div>
         </form>
       </DialogContent>

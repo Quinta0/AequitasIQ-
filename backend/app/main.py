@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
+from fastapi import Body, FastAPI, Depends, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import extract, case, func
@@ -20,6 +20,9 @@ from dateutil.relativedelta import relativedelta
 
 from pydantic import BaseModel
 
+import logging  
+
+logger = logging.getLogger(__name__)
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -91,11 +94,42 @@ def read_transaction(transaction_id: int, db: Session = Depends(get_db)):
     return transaction
 
 @app.put("/transactions/{transaction_id}", response_model=schemas.Transaction)
-def update_transaction(transaction_id: int, transaction: schemas.TransactionUpdate, db: Session = Depends(get_db)):
-    updated_transaction = crud.update_transaction(db, transaction_id, transaction)
-    if updated_transaction is None:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return updated_transaction
+async def update_transaction(
+    transaction_id: int, 
+    transaction: schemas.TransactionUpdate,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Log the incoming data
+        logger.info(f"Updating transaction {transaction_id}")
+        logger.info(f"Received data: {transaction.dict(exclude_unset=True)}")
+        
+        # Validate the data
+        transaction_dict = transaction.dict(exclude_unset=True)
+        logger.info(f"Validated data: {transaction_dict}")
+        
+        # Attempt to update
+        updated_transaction = crud.update_transaction(db, transaction_id, transaction)
+        
+        if updated_transaction is None:
+            logger.error(f"Transaction {transaction_id} not found")
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        
+        logger.info(f"Successfully updated transaction {transaction_id}")
+        return updated_transaction
+        
+    except ValidationError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Validation error", "errors": ve.errors()}
+        )
+    except Exception as e:
+        logger.error(f"Error updating transaction: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @app.delete("/transactions/{transaction_id}")
 def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):

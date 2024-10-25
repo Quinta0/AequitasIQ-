@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { ResponsiveContainer, RadialBarChart, RadialBar, Tooltip } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface FinancialStats {
   total_income: number;
@@ -33,9 +34,7 @@ export function FinancialMetrics() {
           <CardTitle>Financial Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full flex items-center justify-center">
-            Loading...
-          </div>
+          <Skeleton className="h-[300px] w-full" />
         </CardContent>
       </Card>
     );
@@ -46,34 +45,34 @@ export function FinancialMetrics() {
     {
       name: 'Savings Rate',
       value: savingsRate * 100,
-      fill: savingsRate >= 0.2 ? '#22c55e' : savingsRate >= 0.1 ? '#facc15' : '#ef4444',
+      fill: savingsRate >= 0.2 ? 'hsl(var(--chart-2))' : savingsRate >= 0.1 ? 'hsl(var(--chart-4))' : 'hsl(var(--chart-1))',
     },
   ];
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <CardTitle>Financial Overview</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 md:grid-cols-3">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total Income</p>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-sm font-medium text-muted-foreground">Total Income</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
               €{stats?.total_income?.toFixed(2)}
             </p>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total Expenses</p>
-            <p className="text-2xl font-bold text-red-600">
+            <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
               €{stats?.total_expenses?.toFixed(2)}
             </p>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Net Savings</p>
-            <p className="text-2xl font-bold">
+            <p className="text-sm font-medium text-muted-foreground">Net Savings</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               €{stats?.net_savings?.toFixed(2)}
             </p>
           </div>
@@ -105,7 +104,7 @@ export function FinancialMetrics() {
               >
                 {(savingsRate * 100).toFixed(1)}%
               </text>
-              <Tooltip />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
             </RadialBarChart>
           </ResponsiveContainer>
         </div>

@@ -1,4 +1,3 @@
-// components/transaction-list.tsx
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +6,7 @@ import { api } from '@/lib/api'
 import { Transaction } from '@/types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function TransactionList() {
   const { data: transactions, isLoading } = useQuery({
@@ -22,13 +22,17 @@ export function TransactionList() {
   })
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <CardTitle>Recent Transactions</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p>Loading transactions...</p>
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
         ) : transactions?.length === 0 ? (
           <p className="text-muted-foreground">No recent transactions</p>
         ) : (
@@ -36,7 +40,7 @@ export function TransactionList() {
             {transactions?.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className="flex items-center justify-between p-4 border rounded-lg transition-colors hover:bg-muted/50"
               >
                 <div>
                   <p className="font-medium">{transaction.description}</p>
@@ -47,7 +51,7 @@ export function TransactionList() {
                 <div className="text-right">
                   <p className={cn(
                     'font-medium',
-                    transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'
+                    transaction.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                   )}>
                     {transaction.type === 'expense' ? '-' : '+'}€{transaction.amount.toFixed(2)}
                   </p>

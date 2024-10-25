@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PieChart, Pie, Treemap, Sankey, ResponsiveContainer, Cell, Tooltip } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const COLORS = [
-  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8',
-  '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#556270'
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
 ];
 
 type PeriodType = 'monthly' | 'yearly';
@@ -19,6 +23,113 @@ interface TreemapData {
   name: string;
   size: number;
   value: number;
+}
+
+interface TreemapContentProps {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  name: string;
+  value: number;
+  depth: number;
+  index: number;
+  maxValue: number;
+}
+
+const CustomizedContent = ({
+  x,
+  y,
+  width,
+  height,
+  name,
+  value,
+  maxValue,
+}: TreemapContentProps) => {
+  const opacity = 0.2 + (value / maxValue) * 0.8;
+
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={`hsl(var(--primary)/${opacity})`}
+        stroke="hsl(var(--border))"
+        strokeWidth={1}
+      />
+      {width > 50 && height > 25 && (
+        <>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - 8}
+            textAnchor="middle"
+            fill="currentColor"
+            fontSize={12}
+            fontWeight="bold"
+            className="select-none pointer-events-none fill-primary-foreground"
+          >
+            {name}
+          </text>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 8}
+            textAnchor="middle"
+            fill="currentColor"
+            fontSize={10}
+            className="select-none pointer-events-none fill-primary-foreground"
+          >
+            €{value.toFixed(2)}
+          </text>
+        </>
+      )}
+    </g>
+  );
+};
+
+interface ExpenseTreemapProps {
+  data: TreemapData[];
+}
+
+export function ExpenseTreemap({ data }: ExpenseTreemapProps) {
+  const maxValue = useMemo(() => {
+    return Math.max(...data.map(item => item.value));
+  }, [data]);
+
+  return (
+    <div className="h-[400px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <Treemap
+          data={data}
+          dataKey="value"
+          aspectRatio={1}
+          animationDuration={450}
+          animationBegin={0}
+        >
+          {(props: TreemapContentProps) => (
+            <CustomizedContent {...props} maxValue={maxValue} />
+          )}
+          <Tooltip
+            content={({ payload }) => {
+              if (payload && payload.length > 0) {
+                const data = payload[0].payload;
+                return (
+                  <div className="bg-card p-2 rounded-md border shadow-sm">
+                    <p className="font-medium">{data.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      €{Number(data.value).toFixed(2)}
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+        </Treemap>
+      </ResponsiveContainer>
+    </div>
+  );
 }
 
 export function Statistics() {
@@ -45,21 +156,23 @@ export function Statistics() {
     },
   });
 
-  if (isLoading) return <div>Loading statistics...</div>;
-
-  const incomeData = Object.entries(data?.income || {}).map(([name, value]: [string, any]) => ({
-    name,
-    value: value.total,
-  }));
-
-  const expenseData = {
-    name: 'Expenses',
-    children: Object.entries(data?.expenses || {}).map(([name, value]: [string, any]) => ({
+  const incomeData = useMemo(() => 
+    Object.entries(data?.income || {}).map(([name, value]: [string, any]) => ({
       name,
-      size: value.total,
       value: value.total,
-    })) as TreemapData[],
-  };
+    }))
+  , [data?.income]);
+
+  const expenseData = useMemo(() => 
+    Object.entries(data?.expenses || {}).map(([name, value]: [string, any]) => ({
+      name,
+      value: value.total,
+      size: value.total,
+    })).sort((a, b) => b.value - a.value)
+  , [data?.expenses]);
+
+  if (isLoading) return <Skeleton className="h-[1200px] w-full" />;
+
 
   // Prepare Sankey data
   const sankeyData = {
@@ -83,7 +196,9 @@ export function Statistics() {
         value: data?.totals?.expenses || 0,
       },
       // Total Expenses to Expense Categories
-      ...Object.entries(data?.expenses || {}).map(([name, value]: [string, any], index) => ({
+      ...Object.entries(data?.expenses || 
+
+ {}).map(([name, value]: [string, any], index) => ({
         source: Object.keys(data?.income || {}).length + 1,
         target: Object.keys(data?.income || {}).length + 2 + index,
         value: value.total,
@@ -93,7 +208,7 @@ export function Statistics() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-lg">
         <CardHeader>
           <CardTitle>Period Selection</CardTitle>
         </CardHeader>
@@ -154,12 +269,12 @@ export function Statistics() {
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle>Income Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[600px] flex items-center justify-center">
+            <div className="h-[400px] flex items-center justify-center">
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -175,84 +290,37 @@ export function Statistics() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `€${Number(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => `€${Number(value).toFixed(2)}`} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle>Expense Categories</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[600px] flex items-center justify-center">
-              <ResponsiveContainer>
-                <Treemap
-                  data={[expenseData]}
-                  dataKey="value"
-                  aspectRatio={1}
-                  stroke="#fff"
-                >
-                  {(props: any) => {
-                    const { x, y, width, height, depth, index, name } = props;
-                    if (depth === 1) {
-                      return (
-                        <g>
-                          <rect
-                            x={x}
-                            y={y}
-                            width={width}
-                            height={height}
-                            style={{
-                              fill: COLORS[index % COLORS.length],
-                              stroke: '#fff',
-                              strokeWidth: 2,
-                            }}
-                          />
-                          {width > 30 && height > 30 && (
-                            <text
-                              x={x + width / 2}
-                              y={y + height / 2}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              fill="#fff"
-                              fontSize={12}
-                            >
-                              {name}
-                            </text>
-                          )}
-                        </g>
-                      );
-                    }
-                    return null;
-                  }}
-                  <Tooltip 
-                    formatter={(value) => `€${Number(value).toFixed(2)}`}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #ccc' }}
-                  />
-                </Treemap>
-              </ResponsiveContainer>
-            </div>
+            <ExpenseTreemap data={expenseData} />
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-lg">
         <CardHeader>
           <CardTitle>Money Flow</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[800px]">
+          <div className="h-[600px]">
             <ResponsiveContainer width="100%" height="100%">
               <Sankey
                 data={sankeyData}
                 nodePadding={50}
                 nodeWidth={10}
-                link={{ stroke: '#77909c' }}
+                link={{ stroke: 'hsl(var(--muted-foreground))' }}
               >
-                <Tooltip />
+                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
               </Sankey>
             </ResponsiveContainer>
           </div>
