@@ -59,21 +59,21 @@ export function FinancialMetrics() {
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Total Income</p>
             <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              €{stats?.total_income?.toFixed(2)}
+              CHF {stats?.total_income?.toFixed(2)}
             </p>
           </div>
 
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
             <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              €{stats?.total_expenses?.toFixed(2)}
+              CHF {stats?.total_expenses?.toFixed(2)}
             </p>
           </div>
 
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Net Savings</p>
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              €{stats?.net_savings?.toFixed(2)}
+              CHF {stats?.net_savings?.toFixed(2)}
             </p>
           </div>
         </div>

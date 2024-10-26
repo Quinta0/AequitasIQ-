@@ -39,13 +39,13 @@ export default function BudgetOverview() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Total Income</p>
                 <p className="text-2xl font-bold text-green-600">
-                  €{budgetData?.current_month.total_income.toFixed(2)}
+                  CHF {budgetData?.current_month.total_income.toFixed(2)}
                 </p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Total Expenses</p>
                 <p className="text-2xl font-bold text-red-600">
-                  €{budgetData?.current_month.total_expenses.toFixed(2)}
+                  CHF {budgetData?.current_month.total_expenses.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -53,7 +53,7 @@ export default function BudgetOverview() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Previous Month Rollover</p>
               <p className="text-2xl font-bold">
-                €{budgetData?.rollover.toFixed(2)}
+                CHF {budgetData?.rollover.toFixed(2)}
               </p>
             </div>
             
@@ -61,7 +61,7 @@ export default function BudgetOverview() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Available Budget</p>
                 <p className="text-3xl font-bold">
-                  €{(
+                  CHF {(
                     budgetData?.current_month.total_income +
                     budgetData?.rollover -
                     budgetData?.current_month.total_expenses

@@ -28,11 +28,6 @@ export default function BudgetPage() {
         <Suspense fallback={<div>Loading budget overview...</div>}>
           <BudgetOverview />
         </Suspense>
-        
-        <div className="pt-8">
-            <h2 className="text-2xl font-bold mb-4">Test Categorization</h2>
-            <TestCategorization />
-        </div>
 
         <div className="pt-8">
           <h2 className="text-2xl font-bold mb-4">Import Transactions</h2>

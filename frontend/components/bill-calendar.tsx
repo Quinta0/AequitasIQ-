@@ -66,7 +66,7 @@ export function BillCalendar() {
                           {bill.category}
                         </p>
                       </div>
-                      <p className="font-medium text-red-600 dark:text-red-400">€{bill.amount}</p>
+                      <p className="font-medium text-red-600 dark:text-red-400">CHF {bill.amount}</p>
                     </div>
                     {bill.is_recurring && (
                       <p className="text-sm text-muted-foreground mt-2">

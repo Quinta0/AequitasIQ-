@@ -211,7 +211,7 @@ export function TransactionsDataTable() {
                     'text-right font-medium',
                     transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'
                   )}>
-                    {transaction.type === 'expense' ? '-' : '+'}€
+                    {transaction.type === 'expense' ? '-' : '+'}CHF 
                     {transaction.amount.toFixed(2)}
                   </TableCell>
                   <TableCell>

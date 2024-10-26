@@ -53,7 +53,7 @@ export function TransactionList() {
                     'font-medium',
                     transaction.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                   )}>
-                    {transaction.type === 'expense' ? '-' : '+'}€{transaction.amount.toFixed(2)}
+                    {transaction.type === 'expense' ? '-' : '+'}CHF {transaction.amount.toFixed(2)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {transaction.category}

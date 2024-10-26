@@ -51,7 +51,7 @@ export function FinancialAdvisor() {
         <div className="space-y-4">
           <div className="space-y-2">
             <Textarea
-              placeholder="Ask about your financial situation... (e.g., 'Can I afford a new laptop costing €1,200?')"
+              placeholder="Ask about your financial situation... (e.g., 'Can I afford a new laptop costing CHF 1,200?')"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               className="min-h-[100px]"

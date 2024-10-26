@@ -80,7 +80,7 @@ const CustomizedContent = ({
             fontSize={10}
             className="select-none pointer-events-none fill-primary-foreground"
           >
-            €{value.toFixed(2)}
+            CHF {value.toFixed(2)}
           </text>
         </>
       )}
@@ -118,7 +118,7 @@ export function ExpenseTreemap({ data }: ExpenseTreemapProps) {
                   <div className="bg-card p-2 rounded-md border shadow-sm">
                     <p className="font-medium">{data.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      €{Number(data.value).toFixed(2)}
+                      CHF {Number(data.value).toFixed(2)}
                     </p>
                   </div>
                 );
@@ -137,6 +137,12 @@ export function Statistics() {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
+
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--background))',
+    borderColor: 'hsl(var(--border))',
+    color: 'hsl(var(--foreground))',
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['category-summary', selectedYear, selectedMonth, periodType],
@@ -269,7 +275,7 @@ export function Statistics() {
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="transition-all duration-300 hover:shadow-lg">
+      <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle>Income Distribution</CardTitle>
           </CardHeader>
@@ -290,7 +296,12 @@ export function Statistics() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `€${Number(value).toFixed(2)}`} contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
+                  <Tooltip 
+                    formatter={(value) => `CHF ${Number(value).toFixed(2)}`} 
+                    contentStyle={tooltipStyle}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -320,7 +331,11 @@ export function Statistics() {
                 nodeWidth={10}
                 link={{ stroke: 'hsl(var(--muted-foreground))' }}
               >
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
+                <Tooltip 
+                  contentStyle={tooltipStyle}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  itemStyle={{ color: 'hsl(var(--foreground))' }}
+                />
               </Sankey>
             </ResponsiveContainer>
           </div>

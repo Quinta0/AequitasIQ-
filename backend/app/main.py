@@ -17,7 +17,7 @@ import json
 import pandas as pd
 from io import StringIO
 from dateutil.relativedelta import relativedelta
-
+import uvicorn
 from pydantic import BaseModel
 
 import logging  
@@ -564,9 +564,9 @@ async def ask_financial_question(
         You are a financial advisor. Based on the following financial information:
         
         Current Month:
-        - Total Income: €{financial_context['current_month']['income']}
-        - Total Expenses: €{financial_context['current_month']['expenses']}
-        - Available Budget: €{financial_context['current_month']['available']}
+        - Total Income: CHF {financial_context['current_month']['income']} 
+        - Total Expenses: CHF {financial_context['current_month']['expenses']} 
+        - Available Budget: CHF {financial_context['current_month']['available']} 
         
         Recurring Bills:
         {json.dumps(financial_context['recurring_bills'], indent=2)}
@@ -597,5 +597,4 @@ async def ask_financial_question(
         )
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

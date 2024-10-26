@@ -101,7 +101,7 @@ export function BillsCalendarView() {
                       )}
                     </div>
                     <div className="text-right space-y-1">
-                      <p className="font-medium">€{bill.amount.toFixed(2)}</p>
+                      <p className="font-medium">CHF {bill.amount.toFixed(2)}</p>
                       <p className="text-sm text-muted-foreground">
                         {bill.category}
                       </p>
