@@ -1,119 +1,271 @@
 # services/llm_service.py
 from langchain_ollama import OllamaLLM
-from typing import List, Optional
+from typing import List, Dict, Optional, Union
 import json
+import re
+from datetime import datetime
 
-class LLMService:
-    def __init__(self, model_name: str = "qwen2.5:3b"):
-        self.llm = OllamaLLM(model=model_name)
-        self.categories = {
-            "Housing": ["rent", "mortgage", "property tax", "maintenance", "repairs"],
-            "Transportation": ["gas", "fuel", "car", "bus", "train", "parking", "maintenance"],
-            "Food & Dining": ["grocery", "restaurant", "cafe", "food delivery"],
-            "Utilities": ["electricity", "water", "gas", "internet", "phone"],
-            "Healthcare": ["doctor", "medicine", "insurance", "dental", "vision"],
-            "Entertainment": ["movies", "games", "streaming", "sports", "events"],
-            "Shopping": ["clothes", "electronics", "home goods", "amazon"],
-            "Personal Care": ["haircut", "gym", "cosmetics", "spa"],
-            "Education": ["tuition", "books", "courses", "training"],
-            "Investments": ["stocks", "bonds", "crypto", "savings"],
-            "Income": ["salary", "freelance", "dividend", "interest"],
-            "Other": []
+class BaseAgent:
+    def __init__(self, name: str, llm=None):
+        self.name = name
+        self.llm = llm
+
+    def handle_error(self, error: Exception, fallback_response: any) -> any:
+        print(f"{self.name} error: {str(error)}")
+        return fallback_response
+
+    def process(self, task: Dict) -> Dict:
+        raise NotImplementedError("Each agent must implement process method")
+
+class DelegatorAgent(BaseAgent):
+    def __init__(self, llm=None):
+        super().__init__("Delegator Agent", llm)
+        self.agents = {}
+        self.task_mapping = {
+            "categorize": "CategoryAgent",
+            "categorize_batch": "CategoryAgent",
+            "analyze": "AnalysisAgent",
+            "advise": "AdvisorAgent",
+            "predict": "PredictionAgent",
+            "optimize": "OptimizationAgent"
         }
 
-    def categorize_transaction(self, description: str) -> str:
-        """
-        Categorize a transaction description using the Ollama model via Langchain
-        """
-        prompt = f"""
-        You are a financial assistant. Categorize this transaction into exactly ONE of these categories:
-        {', '.join(self.categories.keys())}
-        
-        Here are some examples of what belongs in each category:
-        {json.dumps(self.categories, indent=2)}
-        
-        Transaction description: {description}
-        
-        Consider the following:
-        1. Look for keywords that match the category examples
-        2. Consider the context and purpose of the transaction
-        3. If unclear, use the most likely category based on the description
-        4. Only return the category name, nothing else
-        
-        Category:
-        """
-        
+    def register_agent(self, agent: BaseAgent):
+        self.agents[agent.__class__.__name__] = agent
+
+    def process(self, task: Dict) -> Dict:
         try:
-            # Use Langchain's Ollama integration
-            response = self.llm.invoke(prompt).strip()
+            task_type = task.get("type", "unknown")
+            agent_name = self.task_mapping.get(task_type)
             
-            # Validate and normalize category
-            return self._normalize_category(response)
+            if not agent_name:
+                return {"error": f"Unknown task type: {task_type}"}
+                
+            agent = self.agents.get(agent_name)
+            if not agent:
+                return {"error": f"No agent available for task: {task_type}"}
+                
+            print(f"Delegating {task_type} task to {agent_name}")
+            return agent.process(task)
             
         except Exception as e:
-            print(f"Error getting category from LLM: {str(e)}")
-            return "Other"
+            return self.handle_error(e, {
+                "error": f"Delegation failed: {str(e)}",
+                "task_type": task.get("type", "unknown")
+            })
 
-    def batch_categorize(self, descriptions: List[str]) -> List[str]:
-        """
-        Categorize multiple transactions at once
-        """
-        categories = []
-        for desc in descriptions:
-            try:
-                category = self.categorize_transaction(desc)
-                categories.append(category)
-            except Exception as e:
-                print(f"Error categorizing transaction '{desc}': {str(e)}")
-                categories.append("Other")
-        return categories
-
-    def _normalize_category(self, category: str) -> str:
-        """
-        Normalize category name to match our predefined categories
-        """
-        # Convert to title case for consistency
-        category = category.title()
+class CategoryAgent(BaseAgent):
+    def __init__(self, llm=None):
+        super().__init__("Category Agent", llm)
+        self.categories = {
+            "Fixed Income": [
+                "salary", "wage", "pension", "rental income", "fixed interest", 
+                "lease", "monthly pay", "paycheck", "stipend"
+            ],
+            "Fixed Expenses": [
+                "rent", "mortgage", "insurance", "subscription", "loan payment",
+                "car payment", "netflix", "spotify", "gym membership"
+            ],
+            "Housing": [
+                "property tax", "maintenance", "repairs", "utilities", "hoa",
+                "renovation", "cleaning", "furniture", "appliances", "home"
+            ],
+            "Transportation": [
+                "gas", "fuel", "car", "bus", "train", "parking", "uber", "lyft",
+                "taxi", "metro", "subway", "bicycle", "maintenance", "repair"
+            ],
+            "Food & Dining": [
+                "grocery", "restaurant", "cafe", "food delivery", "takeout",
+                "coffee", "snacks", "supermarket", "meal", "dining", "migros", "coop"
+            ],
+            "Utilities": [
+                "electricity", "water", "gas", "internet", "phone", "heating",
+                "garbage", "sewage", "cable", "telecommunication"
+            ],
+            "Healthcare": [
+                "doctor", "medicine", "insurance", "dental", "vision",
+                "pharmacy", "hospital", "clinic", "medical", "healthcare"
+            ],
+            "Entertainment": [
+                "movies", "games", "streaming", "sports", "events",
+                "concert", "theater", "netflix", "spotify", "hobby"
+            ],
+            "Shopping": [
+                "clothes", "electronics", "home goods", "amazon", "retail",
+                "shoes", "accessories", "department store", "online shopping"
+            ],
+            "Personal Care": [
+                "haircut", "gym", "cosmetics", "spa", "beauty",
+                "salon", "skincare", "grooming", "wellness"
+            ],
+            "Education": [
+                "tuition", "books", "courses", "training", "school",
+                "university", "college", "education", "workshop", "seminar"
+            ],
+            "Investments": [
+                "stocks", "bonds", "crypto", "savings", "investment",
+                "mutual fund", "etf", "trading", "dividend", "securities"
+            ],
+            "Variable Income": [
+                "bonus", "freelance", "dividend", "interest", "commission",
+                "overtime", "tip", "gift", "refund", "side hustle"
+            ],
+        }
         
-        # Direct match
-        if category in self.categories:
-            return category
-            
-        # Try to find the closest match
-        for valid_category in self.categories:
-            if valid_category.lower() in category.lower():
-                return valid_category
-                
+        self.category_patterns = {
+            category: re.compile('|'.join(rf'\b{keyword}\b' 
+                for keyword in keywords), re.IGNORECASE)
+            for category, keywords in self.categories.items()
+        }
+
+    def categorize_by_rules(self, description: str, is_fixed: bool = False, transaction_type: str = 'expense') -> str:
+        if is_fixed:
+            return "Fixed Income" if transaction_type == 'income' else "Fixed Expenses"
+        
+        for category, pattern in self.category_patterns.items():
+            if pattern.search(description):
+                return category
         return "Other"
 
-    def suggest_category_improvements(self, transaction_history: List[dict]) -> dict:
-        """
-        Analyze transaction history and suggest improvements for categorization
-        """
-        prompt = f"""
-        Analyze these transactions and suggest improvements for categorization:
-        {json.dumps(transaction_history, indent=2)}
-        
-        Consider:
-        1. Consistent categorization for similar transactions
-        2. More specific categories when possible
-        3. Identify uncategorized or miscategorized transactions
-        
-        Format your response as a JSON object with suggested changes.
-        """
-        
+    def process(self, task: Dict) -> Dict:
         try:
-            response = self.llm.invoke(prompt)
-            suggestions = json.loads(response)
-            return suggestions
+            if task["type"] == "categorize":
+                category = self.categorize_by_rules(
+                    task["description"],
+                    task.get("is_fixed", False),
+                    task.get("transaction_type", "expense")
+                )
+                return {"category": category}
+                
+            elif task["type"] == "categorize_batch":
+                results = []
+                for transaction in task["transactions"]:
+                    category = self.categorize_by_rules(
+                        transaction["description"],
+                        transaction.get("is_fixed", False),
+                        transaction.get("type", "expense")
+                    )
+                    results.append({
+                        "description": transaction["description"],
+                        "category": category
+                    })
+                return {"results": results}
+                
         except Exception as e:
-            print(f"Error getting suggestions: {str(e)}")
-            return {"error": "Failed to generate suggestions"}
-        
-    def get_financial_advice(self, prompt: str) -> str:
+            return self.handle_error(e, {"category": "Other"})
+
+class AnalysisAgent(BaseAgent):
+    def __init__(self, llm=None):
+        super().__init__("Analysis Agent", llm)
+
+    def process(self, task: Dict) -> Dict:
         try:
+            transactions = task.get("transactions", [])
+            analysis_type = task.get("analysis_type", "general")
+            
+            if analysis_type == "spending_patterns":
+                return self.analyze_spending_patterns(transactions)
+            elif analysis_type == "category_distribution":
+                return self.analyze_category_distribution(transactions)
+            else:
+                return self.general_analysis(transactions)
+                
+        except Exception as e:
+            return self.handle_error(e, {
+                "error": "Analysis failed",
+                "patterns": [],
+                "insights": []
+            })
+
+    def analyze_spending_patterns(self, transactions: List[Dict]) -> Dict:
+        try:
+            # Group by category and calculate totals
+            category_totals = {}
+            for t in transactions:
+                category = t.get("category", "Other")
+                amount = float(t.get("amount", 0))
+                category_totals[category] = category_totals.get(category, 0) + amount
+
+            return {
+                "patterns": {
+                    "category_totals": category_totals,
+                    "total_spend": sum(category_totals.values())
+                }
+            }
+        except Exception as e:
+            return self.handle_error(e, {"patterns": {}})
+
+class AdvisorAgent(BaseAgent):
+    def __init__(self, llm=None):
+        super().__init__("Advisor Agent", llm)
+
+    def process(self, task: Dict) -> Dict:
+        if not self.llm:
+            return self.handle_error(Exception("No LLM available"), 
+                {"advice": "Unable to provide advice without LLM"})
+
+        try:
+            prompt = self.create_advice_prompt(task)
             response = self.llm.invoke(prompt).strip()
-            return response
+            return {"advice": response}
         except Exception as e:
-            print(f"Error getting financial advice: {str(e)}")
-            return "I apologize, but I'm unable to provide advice at the moment. Please try again later."
+            return self.handle_error(e, {"advice": "Failed to generate advice"})
+
+    def create_advice_prompt(self, task: Dict) -> str:
+        return f"""
+        As a financial advisor, analyze this situation:
+        {json.dumps(task.get('data', {}), indent=2)}
+        
+        Provide specific advice considering:
+        1. Income and spending patterns
+        2. Fixed vs variable costs
+        3. Savings opportunities
+        4. Risk factors
+        
+        Format your response in clear, actionable bullet points.
+        """
+
+class LLMService:
+    def __init__(self, model_name: str = "llama3.2"):
+        try:
+            llm = OllamaLLM(model=model_name)
+        except Exception as e:
+            print(f"Warning: Could not initialize LLM: {str(e)}")
+            llm = None
+
+        # Initialize agents
+        self.delegator = DelegatorAgent(llm)
+        self.delegator.register_agent(CategoryAgent(llm))
+        self.delegator.register_agent(AnalysisAgent(llm))
+        self.delegator.register_agent(AdvisorAgent(llm))
+
+    def process_task(self, task_type: str, **kwargs) -> Dict:
+        task = {"type": task_type, **kwargs}
+        return self.delegator.process(task)
+
+    def categorize_transaction(self, description: str, is_fixed: bool = False, transaction_type: str = 'expense') -> str:
+        result = self.process_task(
+            "categorize",
+            description=description,
+            is_fixed=is_fixed,
+            transaction_type=transaction_type
+        )
+        return result.get("category", "Other")
+
+    def batch_categorize(self, transactions: List[Dict]) -> List[str]:
+        result = self.process_task(
+            "categorize_batch",
+            transactions=transactions
+        )
+        return [r.get("category", "Other") for r in result.get("results", [])]
+
+    def analyze_transactions(self, transactions: List[Dict], analysis_type: str = "general") -> Dict:
+        return self.process_task(
+            "analyze",
+            transactions=transactions,
+            analysis_type=analysis_type
+        )
+
+    def get_financial_advice(self, data: Dict) -> str:
+        result = self.process_task("advise", data=data)
+        return result.get("advice", "Unable to provide advice at this time")

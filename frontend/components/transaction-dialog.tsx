@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -35,9 +36,9 @@ interface FormData {
   amount: string
   category: string
   type: 'income' | 'expense'
+  is_fixed: boolean
+  frequency?: 'monthly' | 'quarterly' | 'yearly'
 }
-
-type TransactionKey = keyof Transaction
 
 export function TransactionDialog({ transaction, onSave, children }: TransactionDialogProps) {
   const [open, setOpen] = useState(false)
@@ -48,7 +49,9 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
     description: transaction?.description || '',
     amount: transaction?.amount?.toString() || '',
     category: transaction?.category || '',
-    type: transaction?.type || 'expense'
+    type: transaction?.type || 'expense',
+    is_fixed: transaction?.is_fixed || false,
+    frequency: transaction?.frequency
   })
 
   const handleDescriptionChange = async (newDescription: string) => {
@@ -73,6 +76,7 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
     if (!formData.description.trim()) return "Description is required"
     if (!formData.amount || parseFloat(formData.amount) <= 0) return "Amount must be greater than 0"
     if (!formData.category.trim()) return "Category is required"
+    if (formData.is_fixed && !formData.frequency) return "Frequency is required for fixed transactions"
     return null
   }
 
@@ -94,7 +98,9 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
         description: formData.description.trim(),
         amount: parseFloat(formData.amount),
         category: formData.category.trim(),
-        type: formData.type
+        type: formData.type,
+        is_fixed: formData.is_fixed,
+        ...(formData.is_fixed && { frequency: formData.frequency })
       }
 
       console.log('Submitting data:', submissionData)
@@ -115,7 +121,6 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
       type: value
     }))
   }
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -191,6 +196,47 @@ export function TransactionDialog({ transaction, onSave, children }: Transaction
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center space-x-2">
+          <Checkbox
+            id="is_fixed"
+            checked={formData.is_fixed}
+            onCheckedChange={(checked) =>
+              setFormData(prev => ({
+                ...prev,
+                is_fixed: checked as boolean,
+              }))
+            }
+          />
+          <Label htmlFor="is_fixed">Fixed Transaction</Label>
+          </div>
+          {formData.is_fixed && (
+            <div className="space-y-2">
+              <Label htmlFor="frequency">Frequency</Label>
+              <Select
+                value={formData.frequency}
+                onValueChange={(value: 'monthly' | 'quarterly' | 'yearly') =>
+                  setFormData(prev => ({
+                    ...prev,
+                    frequency: value
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {error && (
+            <div className="text-sm text-red-500 mt-2">
+              {error}
+            </div>
+          )}
           <div className="flex justify-end space-x-2">
             <Button
               type="button"

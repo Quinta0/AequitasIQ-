@@ -11,5 +11,7 @@ class Transaction(Base):
     amount = Column(Float, nullable=False)
     category = Column(String, nullable=False)
     type = Column(String, nullable=False)  # 'expense' or 'income'
+    is_fixed = Column(Boolean, default=False, nullable=False)  # Add this line
+    frequency = Column(String, nullable=True)  # Add this line
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

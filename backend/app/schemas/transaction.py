@@ -1,3 +1,4 @@
+# app/schemas/transaction.py
 from pydantic import BaseModel, Field, validator
 from datetime import date, datetime
 from typing import Optional
@@ -8,6 +9,8 @@ class TransactionBase(BaseModel):
     amount: float = Field(gt=0)
     category: str = Field(min_length=1)
     type: str = Field(pattern="^(expense|income)$")
+    is_fixed: bool = False
+    frequency: Optional[str] = Field(None, pattern="^(monthly|quarterly|yearly)$")
 
     @validator("amount", pre=True)
     def validate_amount(cls, v):
@@ -27,6 +30,8 @@ class TransactionUpdate(BaseModel):
     amount: Optional[float] = Field(None, gt=0)
     category: Optional[str] = Field(None, min_length=1)
     type: Optional[str] = Field(None, pattern="^(expense|income)$")
+    is_fixed: Optional[bool] = None
+    frequency: Optional[str] = Field(None, pattern="^(monthly|quarterly|yearly)$")
 
     class Config:
         from_attributes = True

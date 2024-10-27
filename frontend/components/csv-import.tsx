@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Upload } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -13,18 +15,32 @@ interface PreviewRow {
   [key: string]: string;
 }
 
+interface CategoryResult {
+  row: number;
+  description: string;
+  manual_category: string;
+  ai_category: string;
+  used_category: string;
+}
+
+interface CategoriesSummary {
+  [category: string]: number;
+}
+
 interface ImportResult {
   status: string;
   imported: number;
   message: string;
   categorization?: {
     total: number;
-    results: Array<{
-      row: number;
-      description: string;
-      assigned_category: string;
-    }>;
-    categories_summary: Record<string, number>;
+    using_ai_categories: boolean;
+    results: CategoryResult[];
+    categories_summary: {
+      manual: CategoriesSummary;
+      ai: CategoriesSummary;
+      used: CategoriesSummary;
+    };
+    different_categories: number;
   };
   failed_rows?: Array<{
     row: number;
@@ -38,6 +54,7 @@ const CSVImport = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [useAICategories, setUseAICategories] = useState(false);
   const queryClient = useQueryClient();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +95,7 @@ const CSVImport = () => {
     formData.append('file', file);
 
     try {
-      const response = await api.post<ImportResult>('/transactions/import', formData, {
+      const response = await api.post<ImportResult>(`/transactions/import?use_ai_categories=${useAICategories}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -129,6 +146,15 @@ const CSVImport = () => {
             </Button>
           </div>
 
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="use-ai"
+              checked={useAICategories}
+              onCheckedChange={setUseAICategories}
+            />
+            <Label htmlFor="use-ai">Use AI Categorization</Label>
+          </div>
+
           {error && (
             <Alert variant="destructive">
               <AlertTitle>Error</AlertTitle>
@@ -147,24 +173,44 @@ const CSVImport = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-medium mb-2">Category Summary:</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(result.categorization.categories_summary).map(([category, count]) => (
-                        <div key={category} className="flex justify-between border p-2 rounded">
-                          <span>{category}</span>
-                          <span className="font-medium">{count}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Manual Categories:</h4>
+                        <div className="space-y-2">
+                          {Object.entries(result.categorization.categories_summary.manual).map(([category, count]) => (
+                            <div key={category} className="flex justify-between border p-2 rounded">
+                              <span>{category}</span>
+                              <span className="font-medium">{String(count)}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">AI Categories:</h4>
+                        <div className="space-y-2">
+                          {Object.entries(result.categorization.categories_summary.ai).map(([category, count]) => (
+                            <div key={category} className="flex justify-between border p-2 rounded">
+                              <span>{category}</span>
+                              <span className="font-medium">{String(count)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <div>
                     <h3 className="font-medium mb-2">Sample Categorizations:</h3>
                     <div className="space-y-2">
-                      {result.categorization.results.map((item, index) => (
+                      {result.categorization.results.map((item: CategoryResult, index: number) => (
                         <div key={index} className="border p-2 rounded">
                           <p className="text-sm text-muted-foreground">Row {item.row}</p>
                           <p className="font-medium">{item.description}</p>
-                          <p className="text-sm">Category: <span className="font-medium">{item.assigned_category}</span></p>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <p className="text-sm">Manual: <span className="font-medium">{item.manual_category}</span></p>
+                            <p className="text-sm">AI: <span className="font-medium">{item.ai_category}</span></p>
+                          </div>
+                          <p className="text-sm mt-1">Using: <span className="font-medium">{item.used_category}</span></p>
                         </div>
                       ))}
                     </div>
@@ -206,7 +252,7 @@ const CSVImport = () => {
                       <tr key={i}>
                         {Object.entries(row).map(([key, value], j) => (
                           <td key={`${i}-${j}`} className="p-2 border">
-                            {value}
+                            {String(value)}
                           </td>
                         ))}
                       </tr>

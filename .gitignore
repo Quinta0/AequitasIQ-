@@ -6,6 +6,9 @@
 /backend/data/finance.db
 /backend/data
 /backend/app/__pycache__/
+/backend/alembic
+/backend/alembic.ini
+/backend/.env
 
 # Frontend
 # dependencies
