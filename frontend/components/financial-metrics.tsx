@@ -51,34 +51,37 @@ export function FinancialMetrics() {
 
   return (
     <Card className="transition-all duration-300 hover:shadow-lg ">
-      <CardHeader>
+      <CardHeader className='text-center'>
         <CardTitle>Financial Overview</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Total Income</p>
+      <CardContent className="">
+        <div className="grid gap-6 md:grid-cols-3 place-items-center">
+          <div className="space-y-2 text-center">
+            <p className="text-sm font-medium text-muted-foreground text-xl">Total Income</p>
             <p className="text-2xl font-bold text-green-600 dark:text-green-400">
               CHF {stats?.total_income?.toFixed(2)}
             </p>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+          <div className="space-y-2 text-center">
+            <p className="text-sm font-medium text-muted-foreground text-xl">Total Expenses</p>
             <p className="text-2xl font-bold text-red-600 dark:text-red-400">
               CHF {stats?.total_expenses?.toFixed(2)}
             </p>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Net Savings</p>
+          <div className="space-y-2 text-center">
+            <p className="text-sm font-medium text-muted-foreground text-xl">Net Savings</p>
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               CHF {stats?.net_savings?.toFixed(2)}
             </p>
           </div>
         </div>
 
-        <div className="h-[200px] mt-6">
+        <div className="mt-6 h-80">
+          <div className="text-center w-full mt-8 text-xl">
+            Savings Rate
+          </div>
           <ResponsiveContainer width="100%" height="100%">
             <RadialBarChart
               cx="50%"
@@ -87,8 +90,8 @@ export function FinancialMetrics() {
               outerRadius="100%"
               barSize={10}
               data={gaugeData}
-              startAngle={180}
-              endAngle={0}
+              startAngle={210}
+              endAngle={-30}
             >
               <RadialBar
                 background
@@ -104,7 +107,7 @@ export function FinancialMetrics() {
               >
                 {(savingsRate * 100).toFixed(1)}%
               </text>
-              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }} />
             </RadialBarChart>
           </ResponsiveContainer>
         </div>
