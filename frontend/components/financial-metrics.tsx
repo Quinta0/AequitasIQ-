@@ -50,7 +50,7 @@ export function FinancialMetrics() {
   ];
 
   return (
-    <Card className="transition-all duration-300 hover:shadow-lg">
+    <Card className="transition-all duration-300 hover:shadow-lg ">
       <CardHeader>
         <CardTitle>Financial Overview</CardTitle>
       </CardHeader>

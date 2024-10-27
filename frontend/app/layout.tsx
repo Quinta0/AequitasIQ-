@@ -10,11 +10,14 @@ const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
+  display: "swap",
 });
+
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,14 +31,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={cn(`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background min-w-full px-8`)}
+    <html 
+      lang="en"
+      className={cn(
+        geistSans.variable,
+        geistMono.variable,
+      )}
+      suppressHydrationWarning
+    >
+      <body 
+        className="antialiased min-h-screen bg-background"
+        suppressHydrationWarning
       >
-        
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <div className="relative flex min-h-screen flex-col min-w-full">
+            <div className="relative flex min-h-screen flex-col px-8">
               <Navbar />
               <main className="flex-1">{children}</main>
             </div>
