@@ -14,30 +14,56 @@ def get_transaction(db: Session, transaction_id: int):
     """Get a single transaction by ID"""
     return db.query(models.Transaction).filter(models.Transaction.id == transaction_id).first()
 
+# In crud.py
+
+from sqlalchemy import or_
+from typing import Optional
+
 def get_transactions(
-    db: Session, 
-    skip: int = 0, 
+    db: Session,
+    skip: int = 0,
     limit: int = 100,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    category: Optional[str] = None,
+    search: Optional[str] = None,
     transaction_type: Optional[str] = None,
-    is_fixed: Optional[bool] = None
-) -> List[models.Transaction]:
+    sort_field: Optional[str] = None,
+    sort_direction: Optional[str] = 'desc'
+) -> dict:
     query = db.query(models.Transaction)
     
-    if start_date:
-        query = query.filter(models.Transaction.date >= start_date)
-    if end_date:
-        query = query.filter(models.Transaction.date <= end_date)
-    if category:
-        query = query.filter(models.Transaction.category == category)
+    # Apply search filter
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                models.Transaction.description.ilike(search_term),
+                models.Transaction.category.ilike(search_term)
+            )
+        )
+    
+    # Apply type filter
     if transaction_type:
         query = query.filter(models.Transaction.type == transaction_type)
-    if is_fixed is not None:
-        query = query.filter(models.Transaction.is_fixed == is_fixed)
-        
-    return query.offset(skip).limit(limit).all()
+    
+    # Get total before pagination
+    total = query.count()
+    
+    # Apply sorting
+    if sort_field and hasattr(models.Transaction, sort_field):
+        order_col = getattr(models.Transaction, sort_field)
+        if sort_direction == 'desc':
+            order_col = order_col.desc()
+        query = query.order_by(order_col)
+    else:
+        # Default sort
+        query = query.order_by(models.Transaction.date.desc())
+    
+    # Apply pagination
+    transactions = query.offset(skip).limit(limit).all()
+    
+    return {
+        "transactions": transactions,
+        "total": total
+    }
 
 def get_fixed_transactions(
     db: Session,

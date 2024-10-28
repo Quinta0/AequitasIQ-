@@ -1,6 +1,7 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useDebounce } from '@/hooks/use-debounce';
+import React, { useState, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -8,191 +9,222 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { Transaction } from '@/types'
-import { format, isValid, parseISO } from 'date-fns'
-import { MoreHorizontal, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { TransactionDialog } from '@/components/transaction-dialog'
-import axios from 'axios'
-
-type TransactionKey = keyof Transaction
-type TransactionKeys = keyof Omit<Transaction, 'id' | 'created_at' | 'updated_at'>;
-type EditableFields = Pick<Transaction, 'date' | 'description' | 'amount' | 'category' | 'type'>;
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import type { Transaction, TransactionResponse } from '@/types';
+import { format } from 'date-fns';
+import { MoreHorizontal, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { TransactionDialog } from '@/components/transaction-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export function TransactionsDataTable() {
-  const [page, setPage] = useState(1)
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>()
-  const queryClient = useQueryClient()
-  const limit = 10
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState({
+    type: null as 'expense' | 'income' | null,
+    search: '',
+  });
+  const [sort, setSort] = useState({ field: 'date' as keyof Transaction, direction: 'desc' as 'asc' | 'desc' });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const limit = 10;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['transactions', page],
+  // Add debounced search value
+  const debouncedSearch = useDebounce(filters.search, 300);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['transactions', page, debouncedSearch, filters.type, sort.field, sort.direction],
     queryFn: async () => {
-      const { data } = await api.get<Transaction[]>('/transactions', {
-        params: {
-          skip: (page - 1) * limit,
-          limit,
-        },
-      })
-      return data
+      const searchParams = new URLSearchParams();
+      searchParams.append('skip', String((page - 1) * limit));
+      searchParams.append('limit', String(limit));
+      
+      if (debouncedSearch) {
+        searchParams.append('search', debouncedSearch);
+      }
+      
+      if (filters.type) {
+        searchParams.append('type', filters.type);
+      }
+      
+      if (sort.field) {
+        searchParams.append('sort_field', sort.field);
+        searchParams.append('sort_direction', sort.direction);
+      }
+  
+      console.log('Fetching with params:', Object.fromEntries(searchParams));
+      
+      const response = await api.get(`/transactions?${searchParams.toString()}`);
+      console.log('API Response:', response.data);
+      
+      // The FastAPI endpoint already returns the correct structure
+      // { transactions: [...], total: number }
+      return response.data;
     },
-  })
+  });
 
-  const formatDate = (date: string | Date): string => {
-    if (typeof date === 'string') {
-      // If it's already in YYYY-MM-DD format, return as is
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return date
-      }
-      // Try to parse the date string
-      const parsedDate = parseISO(date)
-      if (isValid(parsedDate)) {
-        return format(parsedDate, 'yyyy-MM-dd')
-      }
-    }
-    if (date instanceof Date && isValid(date)) {
-      return format(date, 'yyyy-MM-dd')
-    }
-    // Default to current date if invalid
-    return format(new Date(), 'yyyy-MM-dd')
-  }
+  const handleSearch = (value: string) => {
+    setFilters(prev => ({ ...prev, search: value }));
+    setPage(1); // Reset to first page when searching
+  };
 
-  const handleSave = async (transactionData: Partial<EditableFields>) => {
+  const handleTypeFilter = (value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      type: value === 'all' ? null : value as 'expense' | 'income'
+    }));
+    setPage(1);
+  };
+
+  const handleSort = (field: keyof Transaction) => {
+    setSort(current => ({
+      field,
+      direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const handleSave = async (transactionData: Partial<Transaction>) => {
     try {
-      const formattedData = {
-        ...transactionData,
-        date: formatDate(transactionData.date!),
-        amount: typeof transactionData.amount === 'string' 
-          ? parseFloat(transactionData.amount)
-          : transactionData.amount
-      }
-
-      console.log('Initial formatted data:', formattedData)
-      
-      let response
-      if (selectedTransaction) {
-        // For updates, only include changed fields
-        const changedFields = (Object.keys(formattedData) as TransactionKeys[]).reduce((acc, key) => {
-          const value = formattedData[key]
-          if (value !== undefined && selectedTransaction[key] !== value) {
-            (acc as any)[key] = value
-          }
-          return acc
-        }, {} as Partial<EditableFields>)
-
-        console.log('Changed fields for update:', changedFields)
-        
-        response = await api.put(
-          `/transactions/${selectedTransaction.id}`, 
-          changedFields,
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        )
-      } else {
-        response = await api.post(
-          '/transactions', 
-          formattedData,
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        )
-      }
-      
-      console.log('API Response:', response.data)
-      
-      await queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      setSelectedTransaction(undefined)
+      await api.post('/transactions', transactionData);
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast({
+        title: "Success",
+        description: "Transaction saved successfully",
+      });
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('API Error Details:', error.response?.data)
-        const errorMessage = error.response?.data?.detail 
-          ? JSON.stringify(error.response?.data.detail)
-          : 'Failed to save transaction'
-        throw new Error(errorMessage)
-      } else {
-        console.error('Error saving transaction:', error)
-        throw error
-      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save transaction",
+      });
     }
-  }
+  };
 
-  const handleEdit = (transaction: Transaction) => {
-    setSelectedTransaction(transaction)
-  }
+  const getSortIcon = (field: keyof Transaction) => {
+    if (sort.field !== field) return <ArrowUpDown className="h-4 w-4 ml-2" />;
+    return sort.direction === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-2" />
+      : <ArrowDown className="h-4 w-4 ml-2" />;
+  };
 
-  const handleDelete = async (transaction: Transaction) => {
-    try {
-      await api.delete(`/transactions/${transaction.id}`)
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    } catch (error) {
-      console.error('Error deleting transaction:', error)
-    }
+  if (error) {
+    console.error('Query error:', error);
+    return <div>Error loading transactions</div>;
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-          <p className="text-muted-foreground">
-            Manage and view all your transactions
-          </p>
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex-1 min-w-[200px] max-w-[400px]">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search transactions..."
+              value={filters.search}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-        <TransactionDialog onSave={handleSave}>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Transaction
-          </Button>
-        </TransactionDialog>
+
+        <div className="flex items-center gap-2">
+          <Select
+            value={filters.type === null ? 'all' : filters.type}
+            onValueChange={handleTypeFilter}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="expense">Expenses</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <TransactionDialog onSave={handleSave}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Transaction
+            </Button>
+          </TransactionDialog>
+        </div>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
+              <TableHead>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => handleSort('date')}
+                  className="flex items-center"
+                >
+                  Date {getSortIcon('date')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => handleSort('description')}
+                  className="flex items-center"
+                >
+                  Description {getSortIcon('description')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => handleSort('category')}
+                  className="flex items-center"
+                >
+                  Category {getSortIcon('category')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => handleSort('type')}
+                  className="flex items-center"
+                >
+                  Type {getSortIcon('type')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => handleSort('amount')}
+                  className="flex items-center justify-end w-full"
+                >
+                  Amount {getSortIcon('amount')}
+                </Button>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  Loading transactions...
-                </TableCell>
+                <TableCell colSpan={5} className="text-center">Loading transactions...</TableCell>
               </TableRow>
-            ) : data?.length === 0 ? (
+            ) : !data?.transactions || data.transactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  No transactions found
-                </TableCell>
+                <TableCell colSpan={5} className="text-center">No transactions found</TableCell>
               </TableRow>
             ) : (
-              data?.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>
-                    {format(new Date(transaction.date), 'MMM d, yyyy')}
-                  </TableCell>
+              data.transactions.map((transaction: Transaction) => (
+                <TableRow key={transaction.id || transaction.date + transaction.description}>
+                  <TableCell>{format(new Date(transaction.date), 'MMM d, yyyy')}</TableCell>
                   <TableCell>{transaction.description}</TableCell>
                   <TableCell>{transaction.category}</TableCell>
                   <TableCell>
@@ -200,8 +232,8 @@ export function TransactionsDataTable() {
                       className={cn(
                         'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium',
                         transaction.type === 'expense'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-green-100 text-green-700'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                       )}
                     >
                       {transaction.type}
@@ -211,29 +243,7 @@ export function TransactionsDataTable() {
                     'text-right font-medium',
                     transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'
                   )}>
-                    {transaction.type === 'expense' ? '-' : '+'}CHF 
-                    {transaction.amount.toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEdit(transaction)}>
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(transaction)}
-                          className="text-red-600"
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {transaction.type === 'expense' ? '-' : '+'}CHF {transaction.amount.toFixed(2)}
                   </TableCell>
                 </TableRow>
               ))
@@ -242,15 +252,11 @@ export function TransactionsDataTable() {
         </Table>
       </div>
 
-      {selectedTransaction && (
-        <TransactionDialog
-          transaction={selectedTransaction}
-          onSave={handleSave}
-        />
-      )}
-
-      {data && data.length > 0 && (
-        <div className="flex justify-end space-x-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {((page - 1) * limit) + 1} to {Math.min((page * limit), data?.total || 0)} of {data?.total || 0} entries
+        </p>
+        <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -261,12 +267,12 @@ export function TransactionsDataTable() {
           <Button
             variant="outline"
             onClick={() => setPage((p) => p + 1)}
-            disabled={data.length < limit}
+            disabled={!data?.transactions?.length || data.transactions.length < limit}
           >
-            Next  
+            Next
           </Button>
         </div>
-      )}
+      </div>
     </div>
-  )
+  );
 }

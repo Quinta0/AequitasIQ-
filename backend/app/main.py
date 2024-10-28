@@ -18,14 +18,14 @@ import pandas as pd
 from io import StringIO
 from dateutil.relativedelta import relativedelta
 import uvicorn
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 import csv
 from io import StringIO
 from typing import List, Optional
 from datetime import date
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 import logging  
@@ -73,26 +73,75 @@ def create_transaction(transaction: schemas.TransactionCreate, db: Session = Dep
     
     return crud.create_transaction(db=db, transaction=transaction)
 
-@app.get("/transactions/", response_model=List[schemas.Transaction])
-def read_transactions(
+@app.get("/transactions/")
+async def read_transactions(
     skip: int = 0,
     limit: int = 100,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    category: Optional[str] = None,
-    transaction_type: Optional[str] = None,
+    search: Optional[str] = None,
+    type: Optional[str] = None,
+    sort_field: Optional[str] = None,
+    sort_direction: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    transactions = crud.get_transactions(
-        db, 
-        skip=skip, 
-        limit=limit,
-        start_date=start_date,
-        end_date=end_date,
-        category=category,
-        transaction_type=transaction_type
-    )
-    return transactions
+    # Start with base query
+    query = db.query(Transaction)
+    
+    # Apply search filter if provided
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                Transaction.description.ilike(search_term),
+                Transaction.category.ilike(search_term)
+            )
+        )
+    
+    # Apply type filter if provided
+    if type:
+        query = query.filter(Transaction.type == type)
+    
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply sorting
+    if sort_field:
+        # Ensure sort_field exists in Transaction model
+        if hasattr(Transaction, sort_field):
+            order_col = getattr(Transaction, sort_field)
+            if sort_direction == 'desc':
+                order_col = order_col.desc()
+            query = query.order_by(order_col)
+        else:
+            # Default sort by date desc if invalid field
+            query = query.order_by(Transaction.date.desc())
+    else:
+        # Default sort by date desc
+        query = query.order_by(Transaction.date.desc())
+    
+    # Apply pagination
+    transactions = query.offset(skip).limit(limit).all()
+    
+    # Convert SQLAlchemy objects to dictionaries
+    transactions_list = [
+        {
+            "id": t.id,
+            "date": t.date.isoformat(),
+            "description": t.description,
+            "amount": float(t.amount),
+            "category": t.category,
+            "type": t.type,
+            "is_fixed": t.is_fixed,
+            "frequency": t.frequency,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+        }
+        for t in transactions
+    ]
+    
+    return {
+        "transactions": transactions_list,
+        "total": total
+    }
 
 @app.get("/transactions/{transaction_id}", response_model=schemas.Transaction)
 def read_transaction(transaction_id: int, db: Session = Depends(get_db)):
