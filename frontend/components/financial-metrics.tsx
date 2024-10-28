@@ -39,7 +39,7 @@ export function FinancialMetrics() {
   return (
     <div className="h-full p-6">
       <CardHeader className="px-0">
-        <CardTitle>Financial Overview</CardTitle>
+        <CardTitle className='text-center text-2xl'>Financial Overview</CardTitle>
       </CardHeader>
       <CardContent className="px-0">
         <div className="grid grid-cols-2 gap-4">
@@ -93,7 +93,7 @@ export function FinancialMetrics() {
 
         {/* Savings Rate Gauge */}
         <div className="mt-4 h-[200px]">
-          <div className="text-center text-sm font-medium text-muted-foreground">
+          <div className="text-center text-xl font-medium text-muted-foreground">
             Savings Rate
           </div>
           <ResponsiveContainer width="100%" height="100%">
