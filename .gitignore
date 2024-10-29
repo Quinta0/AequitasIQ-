@@ -9,6 +9,11 @@
 /backend/alembic
 /backend/alembic.ini
 /backend/.env
+/backend/.pytest_cache
+/backend/app/crud/__pycache__/
+/backend/app/models/__pycache__/
+/backend/app/schemas/__pycache__/
+/backend/app/services/__pycache__/
 
 # Frontend
 # dependencies
