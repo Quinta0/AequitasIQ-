@@ -1,16 +1,18 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { BudgetChart } from './budget-chart';
+import { ArrowDown, ArrowUp, DollarSign, Loader2 } from "lucide-react"
+import { format, startOfMonth, endOfMonth } from "date-fns"
+import { useQuery } from "@tanstack/react-query"
 
-export default function BudgetOverview() {
-  const currentDate = new Date();
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
+import { BudgetChart } from "./budget-chart"
+
+export default function Component() {
+  const currentDate = new Date()
   
-  const { data: budgetData, isLoading } = useQuery({
+  const { data: budgetData, isLoading, error } = useQuery({
     queryKey: ['budget-overview', format(currentDate, 'yyyy-MM')],
     queryFn: async () => {
       const { data } = await api.get('/statistics/budget', {
@@ -18,13 +20,19 @@ export default function BudgetOverview() {
           start_date: format(startOfMonth(currentDate), 'yyyy-MM-dd'),
           end_date: format(endOfMonth(currentDate), 'yyyy-MM-dd'),
         },
-      });
-      return data;
+      })
+      return data
     },
-  });
+  })
 
-  if (isLoading) {
-    return <div>Loading budget data...</div>;
+  if (error) {
+    return (
+      <Card className="p-6">
+        <div className="text-center text-destructive">
+          Failed to load budget data. Please try again later.
+        </div>
+      </Card>
+    )
   }
 
   return (
@@ -32,48 +40,104 @@ export default function BudgetOverview() {
       <Card>
         <CardHeader>
           <CardTitle>Current Month Budget</CardTitle>
+          <CardDescription>
+            {format(currentDate, 'MMMM yyyy')}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Total Income</p>
-                <p className="text-2xl font-bold text-green-600">
-                  CHF {budgetData?.current_month.total_income.toFixed(2)}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Total Expenses</p>
-                <p className="text-2xl font-bold text-red-600">
-                  CHF {budgetData?.current_month.total_expenses.toFixed(2)}
-                </p>
-              </div>
+              <StatCard
+                title="Total Income"
+                value={budgetData?.current_month.total_income}
+                isLoading={isLoading}
+                valueClassName="text-emerald-600"
+                icon={<ArrowUp className="size-4" />}
+              />
+              <StatCard
+                title="Total Expenses"
+                value={budgetData?.current_month.total_expenses}
+                isLoading={isLoading}
+                valueClassName="text-rose-600"
+                icon={<ArrowDown className="size-4" />}
+              />
             </div>
             
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Previous Month Rollover</p>
-              <p className="text-2xl font-bold">
-                CHF {budgetData?.rollover.toFixed(2)}
-              </p>
-            </div>
+            <StatCard
+              title="Previous Month Rollover"
+              value={budgetData?.rollover}
+              isLoading={isLoading}
+              icon={<DollarSign className="size-4" />}
+            />
             
-            <div className="pt-4 border-t">
+            <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Available Budget</p>
-                <p className="text-3xl font-bold">
-                  CHF {(
-                    budgetData?.current_month.total_income +
-                    budgetData?.rollover -
-                    budgetData?.current_month.total_expenses
-                  ).toFixed(2)}
-                </p>
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Available Budget
+                </h3>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-32" />
+                ) : (
+                  <p className="text-3xl font-bold tracking-tight">
+                    CHF {(
+                      budgetData?.current_month.total_income +
+                      budgetData?.rollover -
+                      budgetData?.current_month.total_expenses
+                    ).toFixed(2)}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <BudgetChart data={budgetData} />
+      {isLoading ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Budget Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-[300px] items-center justify-center">
+              <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <BudgetChart data={budgetData} />
+      )}
     </div>
-  );
+  )
+}
+
+function StatCard({
+  title,
+  value,
+  isLoading,
+  valueClassName,
+  icon,
+}: {
+  title: string
+  value?: number
+  isLoading?: boolean
+  valueClassName?: string
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          {icon}
+          <span>{title}</span>
+        </div>
+        {isLoading ? (
+          <Skeleton className="h-8 w-28" />
+        ) : (
+          <p className={`text-2xl font-bold tracking-tight ${valueClassName}`}>
+            CHF {value?.toFixed(2)}
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
