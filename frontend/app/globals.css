@@ -77,3 +77,12 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes hue-rotate {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}

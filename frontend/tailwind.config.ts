@@ -9,6 +9,9 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+		animation: {
+			'hue-rotate': 'hue-rotate 12s linear infinite',
+		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

@@ -46,7 +46,7 @@ export default function DashboardPage() {
         {/* Statistics Section - Spans full width */}
         <div className={cn(
           "md:col-span-2 lg:col-span-4",
-          "rounded-xl bg-card text-card-foreground shadow-sm transition-all hover:shadow-lg"
+          "rounded-xl text-card-foreground transition-all "
         )}>
           <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
             <Statistics />
