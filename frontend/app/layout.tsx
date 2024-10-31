@@ -42,13 +42,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body 
-        className="antialiased min-h-screen bg-background"
+        className="antialiased min-h-screen bg-background w-full"
         suppressHydrationWarning
       >
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <DataVisibilityProvider>
-              <div className="relative flex min-h-screen flex-col px-8">
+              <div className="relative flex min-h-screen flex-col px-8 w-full">
                 <Navbar />
                 <main className="flex-1">{children}</main>
               </div>

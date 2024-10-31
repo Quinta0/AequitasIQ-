@@ -32,7 +32,7 @@ function BudgetOverviewSkeleton() {
 
 export default function BudgetPage() {
   return (
-    <main className="container py-8">
+    <main className="container py-8 min-w-full space-y-6">
       <div className="space-y-8">
         <div className="flex justify-between items-center">
           <div>
