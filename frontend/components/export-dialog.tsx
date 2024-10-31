@@ -69,7 +69,7 @@ export default function ExportDialog() {
           Export Data
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Export Data</DialogTitle>
           <DialogDescription>
