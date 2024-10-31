@@ -1,14 +1,20 @@
-import { Suspense } from 'react'
-import dynamic from 'next/dynamic'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { RefreshCcw } from "lucide-react"
+import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RefreshCcw } from "lucide-react";
 
-const BudgetOverview = dynamic(() => import('@/components/budget-overview'), {
-  loading: () => <BudgetOverviewSkeleton />,
-  ssr: false
-})
+// Import the named component type
+import type { BudgetOverview } from '@/components/budget-overview';
+
+const DynamicBudgetOverview = dynamic<React.ComponentProps<typeof BudgetOverview>>(
+  () => import('@/components/budget-overview').then(mod => mod.BudgetOverview),
+  {
+    loading: () => <BudgetOverviewSkeleton />,
+    ssr: false
+  }
+);
 
 function BudgetOverviewSkeleton() {
   return (
@@ -21,7 +27,7 @@ function BudgetOverviewSkeleton() {
         <Skeleton className="h-[200px] w-full" />
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export default function BudgetPage() {
@@ -42,7 +48,7 @@ export default function BudgetPage() {
         </div>
 
         <Suspense fallback={<BudgetOverviewSkeleton />}>
-          <BudgetOverview />
+          <DynamicBudgetOverview />
         </Suspense>
 
         <p className="text-sm text-muted-foreground">
@@ -50,5 +56,5 @@ export default function BudgetPage() {
         </p>
       </div>
     </main>
-  )
+  );
 }
