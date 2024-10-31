@@ -213,7 +213,7 @@ export function Statistics() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Card className="transition-all duration-300 hover:shadow-lg">
         <CardHeader>
           <CardTitle>Period Selection</CardTitle>
@@ -323,7 +323,7 @@ export function Statistics() {
           <CardTitle>Money Flow</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[600px]">
+          <div className="h-[800px]">
             <ResponsiveContainer width="100%" height="100%">
               <Sankey
                 data={sankeyData}
