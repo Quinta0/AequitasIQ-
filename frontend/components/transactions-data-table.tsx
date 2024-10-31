@@ -27,6 +27,7 @@ import { MoreHorizontal, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'l
 import { cn } from '@/lib/utils';
 import { TransactionDialog } from '@/components/transaction-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useDataVisibility } from '@/contexts/data-visibility-context';
 
 export function TransactionsDataTable() {
   const [page, setPage] = useState(1);
@@ -38,6 +39,13 @@ export function TransactionsDataTable() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const limit = 10;
+
+  const { showData } = useDataVisibility();
+
+  const formatAmount = (amount: number, type: 'expense' | 'income') => {
+    if (!showData) return '••••••';
+    return `${type === 'expense' ? '-' : '+'}CHF ${amount.toFixed(2)}`;
+  };
 
   // Add debounced search value
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -243,7 +251,7 @@ export function TransactionsDataTable() {
                     'text-right font-medium',
                     transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'
                   )}>
-                    {transaction.type === 'expense' ? '-' : '+'}CHF {transaction.amount.toFixed(2)}
+                    {formatAmount(transaction.amount, transaction.type)}
                   </TableCell>
                 </TableRow>
               ))

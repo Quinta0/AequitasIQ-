@@ -6,6 +6,8 @@ import { Navbar } from '@/components/navbar'
 import { Providers } from './providers'
 import { ThemeProvider } from "@/components/theme-provider"
 
+import { DataVisibilityProvider } from '@/contexts/data-visibility-context'
+
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -45,10 +47,12 @@ export default function RootLayout({
       >
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <div className="relative flex min-h-screen flex-col px-8">
-              <Navbar />
-              <main className="flex-1">{children}</main>
-            </div>
+            <DataVisibilityProvider>
+              <div className="relative flex min-h-screen flex-col px-8">
+                <Navbar />
+                <main className="flex-1">{children}</main>
+              </div>
+            </DataVisibilityProvider>
           </ThemeProvider>
         </Providers>
       </body>

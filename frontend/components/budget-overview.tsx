@@ -1,19 +1,18 @@
 'use client'
 
-import React, { useState } from 'react'
-import { ArrowDown, ArrowUp, DollarSign, Loader2, Eye, EyeOff } from "lucide-react"
+import React from 'react'
+import { ArrowDown, ArrowUp, DollarSign, Loader2 } from "lucide-react"
 import { format, startOfMonth, endOfMonth } from "date-fns"
 import { useQuery } from "@tanstack/react-query"
-
+import { useDataVisibility } from '@/contexts/data-visibility-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { BudgetChart } from "./budget-chart"
 
 export default function Component() {
   const currentDate = new Date()
-  const [isPrivate, setIsPrivate] = useState(false)
+  const { showData } = useDataVisibility()
   
   const { data: budgetData, isLoading, error } = useQuery({
     queryKey: ['budget-overview', format(currentDate, 'yyyy-MM')],
@@ -44,28 +43,7 @@ export default function Component() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsPrivate(!isPrivate)}
-          className="flex items-center gap-2"
-        >
-          {isPrivate ? (
-            <>
-              <Eye className="size-4" />
-              Show Values
-            </>
-          ) : (
-            <>
-              <EyeOff className="size-4" />
-              Hide Values
-            </>
-          )}
-        </Button>
-      </div>
-      
+    <div className="space-y-4">      
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -81,7 +59,6 @@ export default function Component() {
                   title="Total Income"
                   value={budgetData?.current_month.total_income}
                   isLoading={isLoading}
-                  isPrivate={isPrivate}
                   valueClassName="text-emerald-600"
                   icon={<ArrowUp className="size-4" />}
                 />
@@ -89,7 +66,6 @@ export default function Component() {
                   title="Total Expenses"
                   value={budgetData?.current_month.total_expenses}
                   isLoading={isLoading}
-                  isPrivate={isPrivate}
                   valueClassName="text-rose-600"
                   icon={<ArrowDown className="size-4" />}
                 />
@@ -99,7 +75,6 @@ export default function Component() {
                 title="Previous Month Rollover"
                 value={budgetData?.rollover}
                 isLoading={isLoading}
-                isPrivate={isPrivate}
                 icon={<DollarSign className="size-4" />}
               />
               
@@ -112,10 +87,10 @@ export default function Component() {
                     <Skeleton className="h-9 w-32" />
                   ) : (
                     <p className="text-3xl font-bold tracking-tight">
-                      {isPrivate ? (
-                        <span className="font-mono">••••••</span>
-                      ) : (
+                      {showData ? (
                         `CHF ${availableBudget?.toFixed(2)}`
+                      ) : (
+                        <span className="font-mono">••••••</span>
                       )}
                     </p>
                   )}
@@ -137,7 +112,7 @@ export default function Component() {
             </CardContent>
           </Card>
         ) : (
-          <BudgetChart data={budgetData} isPrivate={isPrivate} />
+          <BudgetChart data={budgetData} />
         )}
       </div>
     </div>
@@ -148,17 +123,17 @@ function StatCard({
   title,
   value,
   isLoading,
-  isPrivate,
   valueClassName,
   icon,
 }: {
   title: string
   value?: number
   isLoading?: boolean
-  isPrivate?: boolean
   valueClassName?: string
   icon?: React.ReactNode
 }) {
+  const { showData } = useDataVisibility();
+
   return (
     <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
       <div className="space-y-2">
@@ -170,10 +145,10 @@ function StatCard({
           <Skeleton className="h-8 w-28" />
         ) : (
           <p className={`text-2xl font-bold tracking-tight ${valueClassName}`}>
-            {isPrivate ? (
-              <span className="font-mono">••••••</span>
-            ) : (
+            {showData ? (
               `CHF ${value?.toFixed(2)}`
+            ) : (
+              <span className="font-mono">••••••</span>
             )}
           </p>
         )}

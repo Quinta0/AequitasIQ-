@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React from 'react';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -9,15 +9,18 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useDataVisibility } from '@/contexts/data-visibility-context';
 
 export function TransactionList() {
+  const { showData } = useDataVisibility();
+  
   const { data, isLoading } = useQuery({
     queryKey: ['recent-transactions'],
     queryFn: async () => {
       const { data } = await api.get<{ transactions: Transaction[], total: number }>('/transactions', {
         params: { limit: 5 },
       });
-      return data.transactions; // Return just the transactions array
+      return data.transactions;
     },
   });
 
@@ -30,6 +33,11 @@ export function TransactionList() {
       </div>
     );
   }
+
+  const formatAmount = (amount: number, type: string) => {
+    if (!showData) return '••••••';
+    return `${type === 'expense' ? '-' : '+'}CHF ${amount.toFixed(2)}`;
+  };
 
   return (
     <div className="h-full p-6">
@@ -77,8 +85,7 @@ export function TransactionList() {
                     ? 'text-red-600 dark:text-red-400'
                     : 'text-green-600 dark:text-green-400'
                 )}>
-                  {transaction.type === 'expense' ? '-' : '+'}
-                  CHF {transaction.amount.toFixed(2)}
+                  {formatAmount(transaction.amount, transaction.type)}
                 </p>
               </div>
             ))}

@@ -47,7 +47,7 @@ export function BillDialog({ children, bill, onSave, onClose }: BillDialogProps)
     due_date: bill?.due_date || format(new Date(), 'yyyy-MM-dd'),
     category: bill?.category || '',
     is_recurring: bill?.is_recurring || false,
-    frequency: bill?.frequency || 'monthly'
+    frequency: (bill?.frequency as 'monthly' | 'quarterly' | 'yearly') || 'monthly'
   })
 
   const handleSubmit = (e: React.FormEvent) => {

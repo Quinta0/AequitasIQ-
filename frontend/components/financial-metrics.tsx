@@ -1,14 +1,16 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { ResponsiveContainer, RadialBarChart, RadialBar, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Switch } from '@/components/ui/switch'; // Import a Switch component
+import { useDataVisibility } from '@/contexts/data-visibility-context';
 
 export function FinancialMetrics() {
+  const { showData } = useDataVisibility();
+  
   const { data: stats, isLoading } = useQuery({
     queryKey: ['monthly-stats'],
     queryFn: async () => {
@@ -21,8 +23,6 @@ export function FinancialMetrics() {
       return data;
     },
   });
-
-  const [showData, setShowData] = useState(false); // State to toggle data visibility
 
   if (isLoading) {
     return <Skeleton className="h-full w-full" />;
@@ -42,16 +42,22 @@ export function FinancialMetrics() {
     },
   ];
 
+  const formatCurrency = (amount: number) => {
+    return showData 
+      ? `CHF ${amount?.toFixed(2)}` 
+      : '••••••';
+  };
+
+  const formatPercentage = (value: number) => {
+    return showData 
+      ? `${(value * 100).toFixed(1)}%` 
+      : '••••';
+  };
+
   return (
     <div className="h-full p-6">
       <CardHeader className="px-0">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-center text-2xl">Financial Overview</CardTitle>
-          <div className="flex items-center">
-            <span className="mr-2 text-sm">Show Data</span>
-            <Switch checked={showData} onCheckedChange={setShowData} />
-          </div>
-        </div>
+        <CardTitle className="text-center text-2xl">Financial Overview</CardTitle>
       </CardHeader>
       <CardContent className="px-0">
         <div className="grid grid-cols-2 gap-4">
@@ -69,7 +75,7 @@ export function FinancialMetrics() {
                 ? `${Math.floor(
                     ((stats?.net_savings || 0) / (stats?.total_expenses || 1)) * 30
                   )} days`
-                : '****'}
+                : '••••'}
             </p>
           </div>
 
@@ -82,7 +88,7 @@ export function FinancialMetrics() {
           >
             <p className="text-sm font-medium text-white">Net Worth</p>
             <p className="text-2xl font-bold text-white">
-              {showData ? `CHF ${stats?.net_savings?.toFixed(2) || '0.00'}` : '****'}
+              {formatCurrency(stats?.net_savings || 0)}
             </p>
           </div>
         </div>
@@ -92,21 +98,21 @@ export function FinancialMetrics() {
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground">Income</p>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              {showData ? `CHF ${stats?.total_income?.toFixed(2)}` : '****'}
+              {formatCurrency(stats?.total_income || 0)}
             </p>
           </div>
 
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground">Expenses</p>
             <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              {showData ? `CHF ${stats?.total_expenses?.toFixed(2)}` : '****'}
+              {formatCurrency(stats?.total_expenses || 0)}
             </p>
           </div>
 
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground">Savings</p>
             <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-              {showData ? `CHF ${stats?.net_savings?.toFixed(2)}` : '****'}
+              {formatCurrency(stats?.net_savings || 0)}
             </p>
           </div>
         </div>
@@ -136,7 +142,7 @@ export function FinancialMetrics() {
                   dominantBaseline="middle"
                   className="fill-current font-bold text-lg"
                 >
-                  {(savingsRate * 100).toFixed(1)}%
+                  {formatPercentage(savingsRate)}
                 </text>
                 <Tooltip
                   contentStyle={{
@@ -148,8 +154,8 @@ export function FinancialMetrics() {
               </RadialBarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-full text-4xl font-bold">
-              ****
+            <div className="flex items-center justify-center h-full text-4xl font-mono">
+              ••••
             </div>
           )}
         </div>

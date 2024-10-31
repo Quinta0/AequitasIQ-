@@ -42,3 +42,13 @@ export type FilterConfig = {
     end?: Date;
   };
 }
+
+export interface Bill {
+  id: number
+  name: string
+  category: string
+  amount: number
+  is_recurring: boolean
+  frequency: string
+  due_date: string
+}

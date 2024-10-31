@@ -1,11 +1,12 @@
 'use client';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Menu, X } from 'lucide-react';
+import { Menu, Eye, EyeOff } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useDataVisibility } from '@/contexts/data-visibility-context';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -25,6 +33,7 @@ const navItems = [
 export function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { showData, toggleDataVisibility } = useDataVisibility();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -61,14 +70,12 @@ export function Navbar() {
           </Sheet>
         </div>
 
-        {/* Logo/Brand - can be added here */}
         <div className="flex-1 md:flex-none">
           <Link href="/">
             <span className="font-semibold">Aequitas IQ</span>
           </Link>
         </div>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-4 text-sm font-medium">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
@@ -85,7 +92,31 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleDataVisibility}
+                  className="relative"
+                >
+                  {showData ? (
+                    <Eye className="h-5 w-5" />
+                  ) : (
+                    <EyeOff className="h-5 w-5" />
+                  )}
+                  <span className="sr-only">
+                    {showData ? 'Hide sensitive data' : 'Show sensitive data'}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {showData ? 'Hide sensitive data' : 'Show sensitive data'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <ModeToggle />
         </div>
       </div>
