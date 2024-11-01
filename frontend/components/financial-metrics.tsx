@@ -7,10 +7,10 @@ import { ResponsiveContainer, RadialBarChart, RadialBar, Tooltip } from 'rechart
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useDataVisibility } from '@/contexts/data-visibility-context';
-import { PeriodContext } from '@/app/page';
+import { PeriodContext, PeriodContextType } from '@/contexts/period-context';
 
 export function FinancialMetrics() {
-  const { year, month, periodType } = useContext(PeriodContext);
+  const { year, month, periodType } = useContext<PeriodContextType>(PeriodContext);
   const { showData } = useDataVisibility();
   
   const { data: stats, isLoading } = useQuery({

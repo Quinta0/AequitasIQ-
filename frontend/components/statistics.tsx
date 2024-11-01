@@ -7,7 +7,8 @@ import { getStatisticsSummary, CategorySummaryResponse } from '@/lib/api';
 import { PieChart, Pie, Treemap, Sankey, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MoneyFlow } from '@/components/MoneyFlow';
-import { PeriodContext } from '@/app/page';
+import PeriodContext from '@/app/page';
+import { usePeriod } from '@/contexts/period-context';
 
 const COLORS = [
   'hsl(var(--chart-1))',
@@ -133,7 +134,7 @@ export function ExpenseTreemap({ data }: ExpenseTreemapProps) {
 }
 
 export function Statistics() {
-  const { year, month, periodType } = useContext(PeriodContext);
+  const { year, month, periodType } = usePeriod();
 
   const tooltipStyle = {
     backgroundColor: 'hsl(var(--background))',

@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -8,34 +9,24 @@ import { Statistics } from '@/components/statistics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { PeriodSelection } from '@/components/period-selection';
-
-interface PeriodContext {
-  year: number;
-  month?: number;
-  periodType: 'monthly' | 'yearly';
-}
-
-// Create a context to share period selection state
-export const PeriodContext = React.createContext<PeriodContext>({
-  year: new Date().getFullYear(),
-  month: new Date().getMonth() + 1,
-  periodType: 'monthly',
-});
+import { PeriodProvider, PeriodContextType } from '@/contexts/period-context';
+import { usePeriod } from '@/contexts/period-context';
 
 export default function DashboardPage() {
   const currentDate = new Date();
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
-  const [periodType, setPeriodType] = useState<'monthly' | 'yearly'>('monthly');
+  const { year, month, periodType, setPeriodType } = usePeriod();
 
-  const periodContextValue = {
+  const periodContextValue: PeriodContextType = {
     year: selectedYear,
     month: periodType === 'monthly' ? selectedMonth : undefined,
     periodType,
+    setPeriodType,
   };
 
   return (
-    <PeriodContext.Provider value={periodContextValue}>
+    <PeriodProvider value={periodContextValue}>
       <div className="container py-8 min-w-full space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
@@ -94,6 +85,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </PeriodContext.Provider>
+    </PeriodProvider>
   );
 }
