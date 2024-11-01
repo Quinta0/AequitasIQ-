@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useContext } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Toggle } from '@/components/ui/toggle';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getStatisticsSummary, CategorySummaryResponse } from '@/lib/api';
 import { PieChart, Pie, Treemap, Sankey, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MoneyFlow } from '@/components/MoneyFlow';
+import { PeriodContext } from '@/app/page';
 
 const COLORS = [
   'hsl(var(--chart-1))',
@@ -133,10 +133,7 @@ export function ExpenseTreemap({ data }: ExpenseTreemapProps) {
 }
 
 export function Statistics() {
-  const currentDate = new Date();
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
-  const [periodType, setPeriodType] = useState<PeriodType>('monthly');
+  const { year, month, periodType } = useContext(PeriodContext);
 
   const tooltipStyle = {
     backgroundColor: 'hsl(var(--background))',
@@ -144,23 +141,24 @@ export function Statistics() {
     color: 'hsl(var(--foreground))',
   };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['category-summary', selectedYear, selectedMonth, periodType],
+  const { data, isLoading } = useQuery<CategorySummaryResponse>({
+    queryKey: ['category-summary', year, month, periodType],
     queryFn: async () => {
-      const params = periodType === 'monthly' 
-        ? {
-            start_date: `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`,
-            end_date: new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0],
-          }
-        : {
-            start_date: `${selectedYear}-01-01`,
-            end_date: `${selectedYear}-12-31`,
-          };
+      const startDate = periodType === 'monthly'
+        ? `${year}-${String(month).padStart(2, '0')}-01`
+        : `${year}-01-01`;
+        
+      const endDate = periodType === 'monthly'
+        ? new Date(year, month ?? 1, 0).toISOString().split('T')[0]
+        : `${year}-12-31`;
 
-      const { data } = await api.get('/statistics/category-summary', { params });
-      return data;
+      return getStatisticsSummary(startDate, endDate);
     },
   });
+
+  console.log('Query Data:', data); // For debugging
+
+  console.log('Query Data:', data); // For debugging
 
   const incomeData = useMemo(() => 
     Object.entries(data?.income || {}).map(([name, value]: [string, any]) => ({
@@ -179,103 +177,10 @@ export function Statistics() {
 
   if (isLoading) return <Skeleton className="h-[1200px] w-full" />;
 
-
-  // Prepare Sankey data
-  const sankeyData = {
-    nodes: [
-      { name: 'Total Income' },
-      ...Object.keys(data?.income || {}).map(name => ({ name })),
-      { name: 'Total Expenses' },
-      ...Object.keys(data?.expenses || {}).map(name => ({ name })),
-    ],
-    links: [
-      // Income to Total Income
-      ...Object.entries(data?.income || {}).map(([name, value]: [string, any], index) => ({
-        source: index + 1,
-        target: 0,
-        value: value.total,
-      })),
-      // Total Income to Total Expenses
-      {
-        source: 0,
-        target: Object.keys(data?.income || {}).length + 1,
-        value: data?.totals?.expenses || 0,
-      },
-      // Total Expenses to Expense Categories
-      ...Object.entries(data?.expenses || 
-
- {}).map(([name, value]: [string, any], index) => ({
-        source: Object.keys(data?.income || {}).length + 1,
-        target: Object.keys(data?.income || {}).length + 2 + index,
-        value: value.total,
-      })),
-    ],
-  };
-
   return (
     <div className="space-y-8">
-      <Card className="transition-all duration-300 hover:shadow-lg">
-        <CardHeader>
-          <CardTitle>Period Selection</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-center gap-4">
-              <Toggle
-                pressed={periodType === 'monthly'}
-                onPressedChange={() => setPeriodType('monthly')}
-              >
-                Monthly
-              </Toggle>
-              <Toggle
-                pressed={periodType === 'yearly'}
-                onPressedChange={() => setPeriodType('yearly')}
-              >
-                Yearly
-              </Toggle>
-            </div>
-
-            <div className="flex gap-4">
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2023, 2024, 2025].map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {periodType === 'monthly' && (
-                <Select
-                  value={selectedMonth.toString()}
-                  onValueChange={(value) => setSelectedMonth(parseInt(value))}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <SelectItem key={month} value={month.toString()}>
-                        {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="grid gap-6 md:grid-cols-2">
-      <Card className="transition-all duration-300 hover:shadow-lg">
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
             <CardTitle>Income Distribution</CardTitle>
           </CardHeader>
@@ -323,22 +228,15 @@ export function Statistics() {
           <CardTitle>Money Flow</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[800px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <Sankey
-                data={sankeyData}
-                nodePadding={50}
-                nodeWidth={10}
-                link={{ stroke: 'hsl(var(--muted-foreground))' }}
-              >
-                <Tooltip 
-                  contentStyle={tooltipStyle}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  itemStyle={{ color: 'hsl(var(--foreground))' }}
-                />
-              </Sankey>
-            </ResponsiveContainer>
-          </div>
+          {data && (
+            <MoneyFlow 
+              data={{
+                income: data.income,
+                expenses: data.expenses,
+                totals: data.totals
+              }}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

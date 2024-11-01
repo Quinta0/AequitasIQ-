@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, {useContext} from 'react';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -7,17 +7,19 @@ import { ResponsiveContainer, RadialBarChart, RadialBar, Tooltip } from 'rechart
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useDataVisibility } from '@/contexts/data-visibility-context';
+import { PeriodContext } from '@/app/page';
 
 export function FinancialMetrics() {
+  const { year, month, periodType } = useContext(PeriodContext);
   const { showData } = useDataVisibility();
   
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['monthly-stats'],
+    queryKey: ['monthly-stats', year, month, periodType],
     queryFn: async () => {
       const { data } = await api.get('/statistics/monthly', {
         params: {
-          year: new Date().getFullYear(),
-          month: new Date().getMonth() + 1,
+          year,
+          month: periodType === 'monthly' ? month : undefined,
         },
       });
       return data;

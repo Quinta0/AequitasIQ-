@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, TooltipProps } from "recharts";
@@ -36,7 +34,6 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-// Custom tooltip component
 const CustomTooltip = ({
   active,
   payload,
@@ -62,7 +59,7 @@ const CustomTooltip = ({
             Expenses
           </span>
           <span className="font-bold">
-            CHF {Number(payload[1]?.value).toFixed(2)}
+            CHF {Math.abs(Number(payload[1]?.value)).toFixed(2)}
           </span>
         </div>
       </div>
@@ -84,16 +81,24 @@ export function BudgetChart({ data }: BudgetChartProps) {
     );
   }
 
-  const chartData = data.trend.map(item => ({
-    month: item.month,
-    available: showData ? item.available : null,
-    expenses: showData ? Math.abs(item.available - item.rollover) : null,
-  }));
+  // Transform the data to ensure rollovers are properly represented
+  const chartData = data.trend.map(item => {
+    // available is already the net amount for the month
+    const available = item.available;
+    // Calculate expenses (always positive)
+    const expenses = item.available < 0 ? Math.abs(item.available) : 0;
+    
+    return {
+      month: item.month,
+      available: showData ? available : null,
+      expenses: showData ? expenses : null,
+    };
+  });
 
-  // Calculate trend percentage
+  // Calculate trend percentage based on the transformed data
   const lastTwoMonths = data.trend.slice(-2);
   const trendPercentage = lastTwoMonths.length === 2
-    ? ((lastTwoMonths[1].available - lastTwoMonths[0].available) / lastTwoMonths[0].available) * 100
+    ? ((lastTwoMonths[1].available - lastTwoMonths[0].available) / Math.abs(lastTwoMonths[0].available)) * 100
     : 0;
 
   return (

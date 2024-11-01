@@ -5,7 +5,7 @@ const MeshGradientBackground = () => {
     <div className="fixed inset-0 -z-10">
       <div 
         className="w-full h-full bg-background/80 
-          animate-[hue-rotate_12s_linear_infinite]"
+          animate-[hue-rotate_20s_linear_infinite]"
         style={{
           backgroundImage: `
             radial-gradient(at 96% 8%, hsl(var(--primary) / 0.7) 0px, transparent 50%),

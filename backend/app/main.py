@@ -333,16 +333,16 @@ def get_budget_statistics(
         Transaction.date.between(start_date, end_date)
     ).first()
     
-    # Calculate rollover from previous months
-    rollover = db.query(
+    # Calculate initial rollover from all previous months
+    initial_rollover = db.query(
         func.sum(case((Transaction.type == 'income', Transaction.amount), else_=-Transaction.amount))
     ).filter(
-        Transaction.date < start_date
+        Transaction.date < start_date - relativedelta(months=5)  # Start before the 6-month window
     ).scalar() or 0
     
     # Get trend data for the last 6 months
     trend_data = []
-    running_rollover = 0
+    running_rollover = initial_rollover
     
     for i in range(5, -1, -1):
         month_start = start_date - relativedelta(months=i)
@@ -357,20 +357,26 @@ def get_budget_statistics(
         
         month_income = month_stats.income or 0
         month_expenses = month_stats.expenses or 0
-        running_rollover += (month_income - month_expenses)
+        month_net = month_income - month_expenses
+        
+        # Update running rollover
+        running_rollover += month_net
         
         trend_data.append({
             'month': month_start.strftime('%b %Y'),
-            'available': month_income - month_expenses,
-            'rollover': running_rollover
+            'available': month_net,  # This month's net without rollover
+            'rollover': running_rollover  # Cumulative including this month
         })
+    
+    # Current rollover is the last running_rollover value
+    current_rollover = running_rollover
     
     return {
         'current_month': {
             'total_income': current_month.total_income or 0,
             'total_expenses': current_month.total_expenses or 0,
         },
-        'rollover': rollover,
+        'rollover': current_rollover,
         'trend': trend_data
     }
 

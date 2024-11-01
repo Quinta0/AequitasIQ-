@@ -1,3 +1,4 @@
+// Updated API service
 import axios from 'axios';
 
 export const api = axios.create({
@@ -7,7 +8,7 @@ export const api = axios.create({
   },
 });
 
-// types/index.ts
+// Existing interfaces
 export interface Transaction {
   id: number;
   date: string;
@@ -30,3 +31,34 @@ export interface Bill {
   created_at: string;
   updated_at: string;
 }
+
+// New interfaces for statistics
+export interface CategorySummaryItem {
+  total: number;
+  count: number;
+}
+
+export interface CategorySummaryResponse {
+  income: Record<string, CategorySummaryItem>;
+  expenses: Record<string, CategorySummaryItem>;
+  totals: {
+    income: number;
+    expenses: number;
+  };
+}
+
+// Type the API response for better type safety
+export const getStatisticsSummary = async (
+  startDate: string,
+  endDate: string
+): Promise<CategorySummaryResponse> => {
+  const { data } = await api.get<CategorySummaryResponse>('/statistics/category-summary', {
+    params: {
+      start_date: startDate,
+      end_date: endDate,
+    },
+  });
+  
+  console.log('API Response:', data); // For debugging
+  return data;
+};
